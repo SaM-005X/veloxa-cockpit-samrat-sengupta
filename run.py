@@ -39,7 +39,11 @@ def main() -> int:
             print("Day 1 ingestion:", json.dumps(res, indent=2))
 
     if args.status:
-        print("Database counts:", json.dumps(db.table_counts(), indent=2))
+        print("SQLite database counts:", json.dumps(db.table_counts(), indent=2))
+        if db.postgres_enabled:
+            print("Supabase Postgres counts:", json.dumps(db.table_counts(use_postgres=True), indent=2))
+        else:
+            print("Supabase Postgres counts: skipped (DATABASE_URL not set in .env)")
 
     if args.test:
         proc = subprocess.run([sys.executable, "-m", "pytest", "-v"], check=False)

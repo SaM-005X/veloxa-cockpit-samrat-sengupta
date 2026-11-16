@@ -115,8 +115,8 @@ class DatabaseManager:
             rows = conn.execute(sql, params).fetchall()
             return [dict(row) for row in rows]
 
-    def table_counts(self) -> dict[str, int]:
-        """Return row counts for core tables in local SQLite."""
+    def table_counts(self, use_postgres: bool = False) -> dict[str, int]:
+        """Return row counts for core tables in local SQLite or Supabase Postgres."""
         tables = [
             "ingestion_runs",
             "employees",
@@ -131,6 +131,15 @@ class DatabaseManager:
             "payroll_restricted",
         ]
         counts: dict[str, int] = {}
+        if use_postgres and self.postgres_enabled:
+            with self.postgres_conn() as pg_conn:
+                with pg_conn.cursor() as cur:
+                    for tbl in tables:
+                        cur.execute(f"SELECT COUNT(*) AS cnt FROM {tbl}")
+                        row = cur.fetchone()
+                        counts[tbl] = int(row["cnt"]) if row else 0
+            return counts
+
         with self.sqlite_conn() as conn:
             for tbl in tables:
                 row = conn.execute(f"SELECT COUNT(*) AS cnt FROM {tbl}").fetchone()
