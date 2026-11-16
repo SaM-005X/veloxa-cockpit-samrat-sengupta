@@ -1,0 +1,33 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Local SQLite database (auto-generated from seed/raw ingestion)
+# Note: If a frozen seed DB or JSON seed is committed later for fresh-clone evaluation,
+# it will live under data/seed/ rather than root veloxa.db.
+veloxa.db
+*.sqlite
+*.sqlite3
+
+# External private planning & raw hackathon data packs (never commit)
+PRIVATE_MASTER_BLUEPRINT.md
+HANDOFF_STAGE1_READY.md
+raw_data/
+Veloxa_Hackathon_Release_Packs/
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
