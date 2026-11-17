@@ -19,3 +19,8 @@
 - **Context:** CFO Meera Iyer (`T2_CFO_Call.docx`) prohibits surfacing individual employee salaries in the cockpit.
 - **Decision:** Separate `payroll_summary` (department/month totals) from `payroll_restricted` (used solely for internal proration/integrity checks). No Q&A or agent prompt reads raw compensation figures from `payroll_restricted`.
 - **Reversibility:** Reversible via policy config if CFO authorization changes, though kept strict by default.
+
+## D04 — Row Level Security (RLS) Enabled on Public Tables with Direct DB Backend Access (`2026-11-17`)
+- **Context:** Supabase exposes all public tables via PostgREST endpoints by default. Without Row Level Security (RLS), anyone with the publishable/anon key could read or modify sensitive tables (e.g., payroll, employee master, evidence).
+- **Decision:** Enable RLS across all 21 public tables in Supabase (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) with zero permissive public policies. Backend services, ingestion runners, and automated tests access PostgreSQL directly via `DATABASE_URL` (connecting as the administrative `postgres` role), which bypasses table-level RLS by design.
+- **Trade-off / Reversibility:** Protects all public HTTP/REST endpoints from unauthenticated exposure or data leakage, while maintaining fast, full SQL access for the backend cockpit engine. Reversible or extensible by adding granular role-based RLS policies if frontend client-side access is ever required.
