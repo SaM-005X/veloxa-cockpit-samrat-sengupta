@@ -129,6 +129,10 @@ class DatabaseManager:
             "gl_transactions",
             "payroll_summary",
             "payroll_restricted",
+            "hiring_reqs",
+            "leave_records",
+            "pulse_surveys",
+            "voice_note_decisions",
         ]
         counts: dict[str, int] = {}
         if use_postgres and self.postgres_enabled:
