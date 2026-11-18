@@ -1,17 +1,24 @@
 """Veloxa CXO Cockpit — Executive Intelligence Dashboard.
 
 Default Landing View: What Should I Worry About? (Top 3 Ranked Worries per T6a)
-Includes Point-in-Time 'Time Machine' Isolation (Day 1 vs Day 2).
+Includes Point-in-Time 'Time Machine' Isolation (Day 1, Day 2, Day 3),
+Voice Note Governance (T6a, T6b), Grounded CEO Q&A Chatbot, and 14 Colleague AI Agents.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
+from agents.persona import (
+    build_agent_context,
+    get_all_personas,
+    interview_agent,
+    panel_interview,
+)
+from cockpit.qa_engine import ask_cockpit
 from cockpit.risk_engine import get_ranked_worries
 from db.database import DatabaseManager
 
@@ -58,6 +65,14 @@ st.markdown(
         font-weight: bold;
         font-size: 0.8em;
     }
+    .badge-low {
+        background-color: #6b7280;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.8em;
+    }
     .badge-resolved {
         background-color: #28a745;
         color: white;
@@ -67,6 +82,13 @@ st.markdown(
     }
     .badge-open {
         background-color: #dc3545;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75em;
+    }
+    .badge-partial {
+        background-color: #d97706;
         color: white;
         padding: 2px 6px;
         border-radius: 4px;
@@ -94,6 +116,7 @@ st.sidebar.subheader("⏳ Time Machine (Point-in-Time)")
 as_of_option = st.sidebar.selectbox(
     "Select Operating Horizon:",
     [
+        "2026-11-18 (Day 3 — Engineering & Marketing)",
         "2026-11-17 (Day 2 — HR & Requisitions)",
         "2026-11-16 (Day 1 — Finance & Kickoff)",
     ],
@@ -106,9 +129,9 @@ st.sidebar.subheader("🛡️ Storage & Sync Status")
 counts = db.table_counts()
 st.sidebar.write(f"📁 **SQLite Mirror:** `veloxa.db` ({counts.get('evidence_index', 0)} facts)")
 if db.postgres_enabled:
-    st.sidebar.write(f"☁️ **Cloud Primary:** `Supabase Postgres` (Synced)")
+    st.sidebar.write("☁️ **Cloud Primary:** `Supabase Postgres` (Synced)")
 else:
-    st.sidebar.write(f"☁️ **Cloud Primary:** `Offline / Local Mirror`")
+    st.sidebar.write("☁️ **Cloud Primary:** `Offline / Local Mirror`")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📊 Key Company Facts")
@@ -126,10 +149,10 @@ st.caption(f"System State as of **{as_of_date}** | Strict Point-in-Time Non-Leak
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🚨 What Should I Worry About? (Top 3)",
-    "🎙️ Voice Note Responses (T6a)",
+    "🎙️ Voice Note Responses (T6a & T6b)",
     "🔍 Evidence & Conflict Explorer",
-    "🤖 CEO Q&A Chatbot (Stage 3)",
-    "👥 14 Colleague AI Agents (Stage 3)",
+    "🤖 CEO Q&A Chatbot",
+    "👥 14 Colleague AI Agents",
 ])
 
 # ----------------------------------------------------------------------------
@@ -137,7 +160,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # ----------------------------------------------------------------------------
 with tab1:
     st.subheader(f"Top Strategic Worries (As of {as_of_date})")
-    st.info("💡 **Executive Briefing (Voice Note T6a Default):** Opens directly to the Top 3 verified risks by default. Lower-ranked compliance & financial control items remain available in the expandable drawer below.")
+    st.info(
+        "💡 **Executive Briefing (Voice Note T6a Default):** Opens directly to the Top 3 verified risks by default. "
+        "Lower-ranked compliance & financial control items remain available in the expandable drawer below."
+    )
 
     worries_data = get_ranked_worries(db=db, as_of_date=as_of_date, top_n=3)
     top_worries = worries_data["top_worries"]
@@ -166,18 +192,16 @@ with tab1:
                 unsafe_allow_html=True,
             )
 
-            # Evidentiary Citations Expander
             with st.expander(f"🔎 View Evidentiary Basis ({len(w['citations'])} verified sources)", expanded=False):
                 for c in w["citations"]:
                     st.markdown(f"**[{c['evidence_id']}] `{c['source_file']}` — `{c['location']}`** *(Reliability: {c['reliability']})*")
                     st.write(f"> \"{c['fact_text']}\"")
 
-    # Expandable Drawer for #4+
     remaining_worries = all_worries[3:]
     if remaining_worries:
         st.markdown("---")
         with st.expander(f"📂 Expand Remaining Risks (#{len(top_worries)+1}–#{len(all_worries)}) — Financial & Governance Audit Trail", expanded=False):
-            st.caption("These items do not represent existential day-to-day fires but must remain tracked for investor due diligence and financial control compliance.")
+            st.caption("These items must remain tracked for investor due diligence and financial control compliance.")
             for rw in remaining_worries:
                 st.markdown(f"#### #{rw['rank']} [{rw['severity']}] {rw['title']}")
                 st.write(f"**Summary:** {rw['summary']}")
@@ -188,30 +212,63 @@ with tab1:
                 st.markdown("---")
 
 # ----------------------------------------------------------------------------
-# TAB 2: Voice Note Responses (T6a)
+# TAB 2: Voice Note Responses (T6a & T6b)
 # ----------------------------------------------------------------------------
 with tab2:
     st.subheader("🎙️ CEO Voice Note Responses")
 
-    # T6a Card
-    st.markdown("### Voice Note `T6a`: Morning Brief & Risk View")
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        st.markdown("""
-        **Speaker:** Ananya Rao (CEO)  
-        **Release Date:** 2026-11-17  
-        **Status:** <span class="badge-resolved">Implemented with Guardrail</span>  
-        **Decision Document:** `voice_notes/T6a_response.md`
-        """, unsafe_allow_html=True)
-        st.audio(b"", format="audio/wav")  # Placeholder visual
-        st.info('🗣️ **Transcript:** *"Hi, quick one. I won\'t type questions every morning, na. When I open it, it should just tell me what to worry about. Top three. Okay, bye."*')
+    if as_of_date >= "2026-11-18":
+        st.markdown("### Voice Note `T6b`: Marketing Reporting Reorg & Org Resilience")
+        col_b1, col_b2 = st.columns([1, 2])
+        with col_b1:
+            st.markdown(
+                """
+                **Speaker:** Ananya Rao (CEO)  
+                **Release Date:** 2026-11-18  
+                **Status:** <span class="badge-partial">Partial + Reasoned Pushback</span>  
+                **Decision Document:** `voice_notes/T6b_response.md`
+                """,
+                unsafe_allow_html=True,
+            )
+            st.info(
+                '🗣️ **Transcript:** *"So, marketing will report to the new CRO from next month. '
+                'Or the month after, still finalising. Make sure the thing doesn\'t break when we move people around."*'
+            )
+        with col_b2:
+            t6b_file = Path("voice_notes/T6b_response.md")
+            if t6b_file.is_file():
+                st.markdown(t6b_file.read_text(encoding="utf-8"))
+            else:
+                st.warning("voice_notes/T6b_response.md not found.")
+        st.markdown("---")
+    else:
+        st.info("Voice Note `T6b` (released `2026-11-18`) is hidden under the selected earlier Time Machine horizon.")
 
-    with col2:
-        t6a_file = Path("voice_notes/T6a_response.md")
-        if t6a_file.is_file():
-            st.markdown(t6a_file.read_text(encoding="utf-8"))
-        else:
-            st.warning("voice_notes/T6a_response.md not found.")
+    if as_of_date >= "2026-11-17":
+        st.markdown("### Voice Note `T6a`: Morning Brief & Risk View")
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.markdown(
+                """
+                **Speaker:** Ananya Rao (CEO)  
+                **Release Date:** 2026-11-17  
+                **Status:** <span class="badge-resolved">Implemented with Guardrail</span>  
+                **Decision Document:** `voice_notes/T6a_response.md`
+                """,
+                unsafe_allow_html=True,
+            )
+            st.info(
+                '🗣️ **Transcript:** *"Hi, quick one. I won\'t type questions every morning, na. '
+                'When I open it, it should just tell me what to worry about. Top three. Okay, bye."*'
+            )
+        with col2:
+            t6a_file = Path("voice_notes/T6a_response.md")
+            if t6a_file.is_file():
+                st.markdown(t6a_file.read_text(encoding="utf-8"))
+            else:
+                st.warning("voice_notes/T6a_response.md not found.")
+    else:
+        st.info("No CEO voice notes were released on Day 1 (`2026-11-16`).")
 
 # ----------------------------------------------------------------------------
 # TAB 3: Evidence & Conflict Explorer
@@ -221,13 +278,23 @@ with tab3:
 
     explorer_view = st.radio(
         "Select Dataset:",
-        ["Evidence Index", "Active Conflicts", "Hiring Requisitions", "Leave Register", "Pulse Surveys", "GL Transactions"],
+        [
+            "Evidence Index",
+            "Active Conflicts",
+            "Jira Issues & Versions",
+            "Git Commits Summary",
+            "Incidents & On-Call",
+            "Hiring Requisitions",
+            "Leave Register",
+            "Pulse Surveys",
+            "GL Transactions",
+        ],
         horizontal=True,
     )
 
     if explorer_view == "Evidence Index":
         rows = db.query(
-            """SELECT evidence_id, source_file, location, fact_text, reliability, event_date, conflict_group_id
+            """SELECT evidence_id, source_file, location, fact_text, reliability, event_date, conflict_group_id, release_date
                FROM evidence_index
                WHERE release_date <= ?
                ORDER BY evidence_id""",
@@ -253,71 +320,220 @@ with tab3:
             st.success(f"**Cockpit Verified Conclusion:** {cf['verified_conclusion']}")
             st.markdown("---")
 
+    elif explorer_view == "Jira Issues & Versions":
+        if as_of_date >= "2026-11-18":
+            v_rows = db.query("SELECT * FROM jira_versions WHERE release_date <= ?", (as_of_date,))
+            if v_rows:
+                st.markdown("##### Release Versions")
+                st.dataframe(pd.DataFrame(v_rows), use_container_width=True)
+            j_rows = db.query("SELECT issue_key, epic_key, summary, status, assignee_id, story_points, created_date, updated_date FROM jira_issues WHERE release_date <= ? ORDER BY issue_key", (as_of_date,))
+            st.markdown(f"##### Jira Stories ({len(j_rows)} issues)")
+            st.dataframe(pd.DataFrame(j_rows), use_container_width=True)
+        else:
+            st.warning("Jira exports are part of Day 3 (2026-11-18) and are hidden under earlier Time Machine horizons.")
+
+    elif explorer_view == "Git Commits Summary":
+        if as_of_date >= "2026-11-18":
+            g_rows = db.query(
+                """SELECT canonical_entity_id, author_name, repo_name, COUNT(*) AS commits,
+                          SUM(CASE WHEN is_late_night = 1 OR is_late_night = TRUE THEN 1 ELSE 0 END) AS late_night_ist,
+                          SUM(CASE WHEN is_weekend = 1 OR is_weekend = TRUE THEN 1 ELSE 0 END) AS weekend_ist
+                   FROM git_commits
+                   WHERE release_date <= ?
+                   GROUP BY canonical_entity_id, author_name, repo_name
+                   ORDER BY commits DESC""",
+                (as_of_date,),
+            )
+            st.dataframe(pd.DataFrame(g_rows), use_container_width=True)
+        else:
+            st.warning("Git commit logs are part of Day 3 (2026-11-18) and are hidden under earlier Time Machine horizons.")
+
+    elif explorer_view == "Incidents & On-Call":
+        if as_of_date >= "2026-11-18":
+            inc_rows = db.query("SELECT incident_id, severity, service, occurred_date, responder_ids, status, summary FROM incidents WHERE release_date <= ? ORDER BY occurred_date", (as_of_date,))
+            st.markdown("##### PagerDuty Incidents (Aug–Oct 2026)")
+            st.dataframe(pd.DataFrame(inc_rows), use_container_width=True)
+            rota_rows = db.query("SELECT week_start, week_end, primary_entity_id, secondary_entity_id FROM oncall_rota WHERE release_date <= ? ORDER BY week_start", (as_of_date,))
+            st.markdown("##### On-Call Rota (17 Weeks)")
+            st.dataframe(pd.DataFrame(rota_rows), use_container_width=True)
+        else:
+            st.warning("Incidents and On-Call Rota are part of Day 3 (2026-11-18) and are hidden under earlier horizons.")
+
     elif explorer_view == "Hiring Requisitions":
         if as_of_date >= "2026-11-17":
             h_rows = db.query("SELECT * FROM hiring_reqs WHERE release_date <= ? ORDER BY req_id", (as_of_date,))
             st.dataframe(pd.DataFrame(h_rows), use_container_width=True)
         else:
-            st.warning("Hiring Requisitions are part of Day 2 (2026-11-17) and are not visible under Day 1 operating horizon.")
+            st.warning("Hiring Requisitions are part of Day 2 (2026-11-17) and are hidden under Day 1.")
 
     elif explorer_view == "Leave Register":
         if as_of_date >= "2026-11-17":
             l_rows = db.query("SELECT * FROM leave_records WHERE release_date <= ? ORDER BY start_date", (as_of_date,))
             st.dataframe(pd.DataFrame(l_rows), use_container_width=True)
         else:
-            st.warning("Leave Register is part of Day 2 (2026-11-17) and is not visible under Day 1 operating horizon.")
+            st.warning("Leave Register is part of Day 2 (2026-11-17) and is hidden under Day 1.")
 
     elif explorer_view == "Pulse Surveys":
         if as_of_date >= "2026-11-17":
             p_rows = db.query("SELECT survey_period, department, respondent_count, avg_score, comments_withheld, withhold_reason FROM pulse_surveys WHERE release_date <= ? ORDER BY survey_period, department", (as_of_date,))
             st.dataframe(pd.DataFrame(p_rows), use_container_width=True)
         else:
-            st.warning("Pulse Survey results are part of Day 2 (2026-11-17) and are not visible under Day 1 operating horizon.")
+            st.warning("Pulse Survey results are part of Day 2 (2026-11-17) and are hidden under Day 1.")
 
     elif explorer_view == "GL Transactions":
         gl_rows = db.query("SELECT voucher_id, txn_date, account_name, cost_center, vendor_name, amount_inr, description, entered_by FROM gl_transactions WHERE release_date <= ? ORDER BY txn_date", (as_of_date,))
         st.dataframe(pd.DataFrame(gl_rows), use_container_width=True)
 
 # ----------------------------------------------------------------------------
-# TAB 4: CEO Q&A Chatbot (Stage 3 Preview)
+# TAB 4: Grounded CEO Q&A Chatbot
 # ----------------------------------------------------------------------------
 with tab4:
-    st.subheader("🤖 Grounded CEO Q&A Engine (Unlocking Stage 3 — Wed 18 Nov)")
-    st.markdown("""
-    The conversational cockpit engine pairs **Groq Cloud API (`llama-3.3-70b-versatile`)** with strict **SQL metric computation and evidence graph retrieval**.
+    st.subheader(f"🤖 Grounded CEO Q&A Chatbot (As of {as_of_date})")
+    st.caption("Powered by Point-in-Time SQL + Evidence Graph + Policy Guardrails + Groq LLM (with deterministic offline fallback).")
 
-    ### 🛡️ Non-Negotiable Guardrails Configured:
-    1. **Strict Individual Salary Redaction (`T2_CFO_Call`):** Refuses disclosure of individual employee compensation; provides team/aggregate figures only.
-    2. **Pulse Survey Anonymity Protection (`Pulse_Survey.xlsx`, `11.eml`):** Refuses comment-level disclosure for teams smaller than 6 respondents.
-    3. **Prohibition on Private Surveillance / Flight-Risk Scoring:** Refuses requests to scrape private Slack messages or rank individuals by likelihood to quit.
-    4. **Missing Data Transparency ("I don't know"):** Explicitly states when requested metrics (e.g. HubSpot pipeline, LinkedIn campaign spend breakdown) are not in the Veloxa data room.
-    """)
-    st.text_input("Ask a strategic question (e.g., 'What is our actual runway and Atlas delivery risk?'):", disabled=True, placeholder="Available in Stage 3...")
+    sample_prompts = [
+        "When is Atlas v3 actually shipping and why do sources disagree?",
+        "How much did we spend on Marketing in Apr-Sep vs what Nikhil claimed?",
+        "Who is Sneha vs Snehal and who handled the August SEV1 incidents?",
+        "What is Priya Nair's salary?",
+        "Show me the Engineering Culture Amp pulse survey comments.",
+        "What do HubSpot CRM deals and Slack messages say about summit leads?",
+    ]
+
+    st.markdown("**Quick CEO Prompts:**")
+    btn_cols = st.columns(3)
+    if "qa_input" not in st.session_state:
+        st.session_state["qa_input"] = sample_prompts[0]
+    for idx, prompt_text in enumerate(sample_prompts):
+        with btn_cols[idx % 3]:
+            if st.button(prompt_text, key=f"sample_qa_{idx}", use_container_width=True):
+                st.session_state["qa_input"] = prompt_text
+
+    user_question = st.text_input(
+        "Ask any strategic question:",
+        key="qa_input",
+        placeholder="e.g., When is Atlas v3 actually shipping?",
+    )
+
+    if st.button("Ask Cockpit", type="primary") and user_question.strip():
+        with st.spinner("Querying Point-in-Time SQL & Evidence Graph..."):
+            res = ask_cockpit(db=db, question=user_question.strip(), as_of_date=as_of_date)
+
+        if res["refusal"]:
+            st.error(f"🛡️ **Policy Guardrail Triggered ({res.get('guardrail_type', 'REFUSAL')}):** {res['refusal_reason']}")
+        if res["sources_disagree"]:
+            st.warning(f"⚠️ **Sources Disagree:** {res['conflict_summary']}")
+
+        conf_color = {"High": "#16a34a", "Medium": "#d97706", "Low": "#dc2626"}.get(res["confidence"], "#4b5563")
+        st.markdown(
+            f"""
+            <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; background-color: #ffffff; margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: 700; color: #111827;">Cockpit Answer (Horizon: {res['as_of_date']})</span>
+                    <span>
+                        <span style="background-color: {conf_color}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">Confidence: {res['confidence']}</span>
+                        <span style="background-color: #e5e7eb; color: #374151; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; margin-left: 6px;">Engine: {res['model_used']}</span>
+                    </span>
+                </div>
+                <p style="font-size: 1.0em; color: #1f2937; margin-bottom: 8px;">{res['answer']}</p>
+                <p style="font-size: 0.85em; color: #4b5563; margin: 0;"><strong>Confidence Basis:</strong> {res['confidence_reason']}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        with st.expander(f"🔎 Citations ({len(res['citations'])} verified source references)", expanded=True):
+            if res["citations"]:
+                for cit in res["citations"]:
+                    st.markdown(f"- `{cit}`")
+            else:
+                st.write("No citations available for missing/unreleased records.")
 
 # ----------------------------------------------------------------------------
-# TAB 5: 14 Colleague AI Agents (Stage 3 Preview)
+# TAB 5: 14 Colleague AI Agents (1-on-1 & Department / Conflict Panel)
 # ----------------------------------------------------------------------------
 with tab5:
-    st.subheader("👥 The 14 Colleague Personas (Roster Active)")
-    st.caption("14 synthetic colleagues across Engineering, Finance, People & Ops, and Marketing. 1-on-1 interviews and department cross-examination unlock in Stage 3.")
+    st.subheader(f"👥 14 Colleague AI Agents (As of {as_of_date})")
+    personas = get_all_personas(db)
+    persona_map = {p["entity_id"]: p for p in personas}
 
-    colleagues = db.query(
-        """SELECT entity_id, full_name, department, title, manager_id, location, join_date
-           FROM employees
-           WHERE is_agent_persona = 1
-           ORDER BY department, entity_id"""
+    agent_mode = st.radio(
+        "Interview Mode:",
+        ["1-on-1 Colleague Interview", "Department / Conflict Panel Cross-Check"],
+        horizontal=True,
     )
-    if colleagues:
-        cols = st.columns(3)
-        for idx, c in enumerate(colleagues):
-            with cols[idx % 3]:
-                st.markdown(
-                    f"""
-                    <div class="metric-card">
-                        <strong>{c['full_name']}</strong> (`{c['entity_id']}`)<br/>
-                        <span style="color: #4b5563; font-size: 0.9em;">{c['title']} — {c['department']}</span><br/>
-                        <span style="font-size: 0.8em; color: #6b7280;">📍 {c['location']} | Joined {c['join_date']}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+
+    if agent_mode == "1-on-1 Colleague Interview":
+        options = [f"{p['entity_id']} — {p['full_name']} ({p['title']}, {p['department']})" for p in personas]
+        selected_opt = st.selectbox("Select Colleague:", options)
+        selected_id = selected_opt.split(" — ")[0]
+
+        ctx = build_agent_context(db, selected_id, as_of_date=as_of_date)
+        col_left, col_right = st.columns([1, 2])
+        with col_left:
+            st.markdown("#### Grounded Work Stats")
+            st.json(ctx["work_stats"] if ctx["work_stats"] else {"note": f"Minimal operational stats visible as of {as_of_date}"})
+            st.markdown("#### Visibility Scope")
+            st.caption(ctx["visibility_scope"])
+            st.markdown("#### Assumed Personal Profile (`ASSUMPTIONS.md`)")
+            st.info(ctx["assumed_personal_context"])
+
+        with col_right:
+            iv_question = st.text_input(
+                f"Ask {persona_map[selected_id]['full_name']} a question:",
+                value="How are things actually going on your team right now?",
+                key="iv_question",
+            )
+            if st.button("Interview Colleague", type="primary") and iv_question.strip():
+                with st.spinner(f"Interviewing {persona_map[selected_id]['full_name']} as of {as_of_date}..."):
+                    iv_res = interview_agent(db, selected_id, iv_question.strip(), as_of_date=as_of_date)
+                st.success(f"**{iv_res['full_name']} ({iv_res['title']})** *(Model: `{iv_res['model_used']}`)*")
+                st.write(iv_res["response"])
+                with st.expander("🔎 Grounded Citations"):
+                    for c in iv_res["citations"]:
+                        st.markdown(f"- `{c}`")
+
+    else:
+        panel_preset = st.selectbox(
+            "Select Department or Conflict Pair:",
+            [
+                "Engineering (Vikram, Priya, Arjun, Sneha, Rahul)",
+                "Marketing vs Finance (Nikhil VX006, Meera VX003, Aisha VX011)",
+                "Atlas Leadership Conflict (Vikram VX004, Priya VX007, Sneha VX012)",
+                "Finance (Meera, Karthik, Fatima)",
+                "People & Ops (Deepa, Rohan, Lakshmi)",
+                "Marketing (Nikhil, Aisha, Siddharth)",
+            ],
+        )
+        preset_target_map = {
+            "Engineering (Vikram, Priya, Arjun, Sneha, Rahul)": "Engineering",
+            "Marketing vs Finance (Nikhil VX006, Meera VX003, Aisha VX011)": "VX006,VX003,VX011",
+            "Atlas Leadership Conflict (Vikram VX004, Priya VX007, Sneha VX012)": "VX004,VX007,VX012",
+            "Finance (Meera, Karthik, Fatima)": "Finance",
+            "People & Ops (Deepa, Rohan, Lakshmi)": "People & Ops",
+            "Marketing (Nikhil, Aisha, Siddharth)": "Marketing",
+        }
+        panel_target = preset_target_map[panel_preset]
+        panel_q = st.text_input(
+            "Panel Question:",
+            value="What is the real status and biggest risk right now?",
+            key="panel_q",
+        )
+        if st.button("Run Panel Cross-Check", type="primary") and panel_q.strip():
+            with st.spinner(f"Querying panel `{panel_target}` as of {as_of_date}..."):
+                p_res = panel_interview(db, panel_target, panel_q.strip(), as_of_date=as_of_date)
+            st.warning(p_res["truth_synthesis"])
+            p_cols = st.columns(min(3, len(p_res["responses"])))
+            for idx, r in enumerate(p_res["responses"]):
+                with p_cols[idx % len(p_cols)]:
+                    st.markdown(
+                        f"""
+                        <div class="metric-card">
+                            <strong>{r['full_name']}</strong> (`{r['emp_id']}`)<br/>
+                            <span style="color:#4b5563; font-size:0.85em;">{r['title']} — {r['department']}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.write(r["response"])
+                    st.caption(f"Sources: {', '.join(r['citations'][:2])}")
