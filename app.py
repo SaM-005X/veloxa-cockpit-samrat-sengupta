@@ -36,10 +36,21 @@ st.markdown(
     <style>
     .metric-card {
         background-color: #f8f9fa;
+        color: #111827;
         border-radius: 8px;
         padding: 16px;
         border-left: 5px solid #1f77b4;
         margin-bottom: 12px;
+    }
+    .metric-card strong,
+    .metric-card code {
+        color: #111827;
+    }
+    .metric-card code {
+        background-color: #e5e7eb;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 0.85em;
     }
     .badge-critical {
         background-color: #ff4b4b;
@@ -528,9 +539,9 @@ with tab5:
                 with p_cols[idx % len(p_cols)]:
                     st.markdown(
                         f"""
-                        <div class="metric-card">
-                            <strong>{r['full_name']}</strong> (`{r['emp_id']}`)<br/>
-                            <span style="color:#4b5563; font-size:0.85em;">{r['title']} — {r['department']}</span>
+                        <div class="metric-card" style="color: #111827;">
+                            <strong style="color: #111827;">{r['full_name']}</strong> <code style="color: #111827; background-color: #e5e7eb; padding: 1px 5px; border-radius: 4px; font-size: 0.85em;">{r['emp_id']}</code><br/>
+                            <span style="color: #4b5563; font-size: 0.85em;">{r['title']} — {r['department']}</span>
                         </div>
                         """,
                         unsafe_allow_html=True,
