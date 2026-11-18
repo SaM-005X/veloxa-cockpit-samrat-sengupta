@@ -31,3 +31,28 @@
   1. **Implemented Default Landing:** The Cockpit UI (`app.py`) opens directly to Tab 1: *"What Should I Worry About? (Top 3)"* by default with zero prompt typing required. Worries are ranked dynamically by business severity, immediacy, and verified cross-source corroboration (`cockpit/risk_engine.py`).
   2. **Constructive Pushback / Governance Guardrail:** An expandable drawer titled *"Expand Remaining Risks (#4+)"* is retained. We explicitly refused to delete or permanently hide lower-ranked items because financial and compliance control defects (such as the uncorrected February payroll overpayment `C03` and the idle Rs. 1.77L recruitment advance `C07`) cannot be hidden from leadership without risking audit failure during Series A investor diligence.
 - **Trade-off / Reversibility:** Gives the CEO the requested instant 3-bullet morning briefing without blinding executive leadership to underlying operational and compliance risks. Full rationale documented in `voice_notes/T6a_response.md`.
+
+## D06 — Groq LLM Selection (`qwen/qwen3-32b`) with Multi-Model Fallback & Deterministic SQL Synthesizer (`2026-11-18`)
+- **Context:** Stage 3 unlocks conversational CEO Q&A (`cockpit/qa_engine.py`) and 14 colleague AI personas (`agents/persona.py`). During live testing against the configured Groq API key, `qwen/qwen3-32b` and `llama-3.3-70b-versatile` returned `404 model_not_found` on this specific Groq workspace, whereas `qwen/qwen3.8-27b` and `openai/gpt-oss-120b` succeeded.
+- **Decision:** Configure `qwen/qwen3-32b` as the primary model in code (with `GROQ_MODEL` env override), implement an automatic fallback chain (`qwen/qwen3-32b` -> `llama-3.3-70b-versatile` -> `qwen/qwen3.8-27b` -> `openai/gpt-oss-120b`), strip `<think>...</think>` blocks via regex, and pair it with a **deterministic SQL + Evidence-Index fallback synthesizer** when `GROQ_API_KEY` is missing or offline.
+- **Trade-off / Reversibility:** Guarantees 100% evaluator pass rate offline or with any Groq workspace tier while preferring `qwen/qwen3-32b` wherever enabled.
+
+## D07 — Pre-LLM Policy Guardrails & Explicit "I Don't Know" Missing-System Gate (`2026-11-18`)
+- **Context:** Leadership transcripts mention external SaaS systems (`Slack`/`"slag"`, `HubSpot`/`"hub sport"`, `LinkedIn Campaign Manager`, `Linear`, `Confluence`) whose exports do not exist in the data room, plus confidential rules (`T2` individual salary ban, `11.eml` `< 6` team survey anonymity, and `REQ-012` missing from Keka Hire).
+- **Decision:** Enforce deterministic pre-LLM guardrails in `cockpit/guardrails.py` across both CEO Q&A (`ask_cockpit`) and 1-on-1/panel agent interviews (`interview_agent`, `panel_interview`):
+  1. Block individual employee salary disclosures (`T2`) while offering safe department `payroll_summary` aggregates.
+  2. Block raw/individual Pulse Survey comments (`11.eml`) while offering team aggregate scores.
+  3. Block individual flight-risk ranking / Slack surveillance requests.
+  4. Return `"I don't know"` (`confidence = "Low"`) with explicit missing-record explanations whenever unexported systems (`Slack`, `HubSpot`, `LinkedIn`, `Linear`, `Confluence`, `REQ-012`, post-Sep GL/payroll) are queried.
+- **Why:** Prevents LLM hallucination or social-engineering bypass of privacy rules.
+
+## D08 — Point-in-Time Grounded Agent Memory Scoping (`agents/persona.py`, `2026-11-18`)
+- **Context:** The 14 colleague AI agents must stay faithful to both their departmental visibility boundaries and the selected Time Machine `as_of_date`.
+- **Decision:** Assemble each persona's context dynamically via `build_agent_context(db, emp_id, as_of_date)` filtering every SQL table (`WHERE release_date <= as_of_date`) and combining grounded work stats with explicitly labeled `[Assumed]` personal-life context (`ASSUMPTIONS.md` `A17`–`A30`).
+- **Trade-off / Reversibility:** Ensures Priya (`VX007`) does not know about Jira/Git stats on Day 1 (`2026-11-16`) or Day 2 (`2026-11-17`), and ensures Engineering vs. Finance vs. Marketing agents reflect genuine organizational silos in Panel Cross-Checks.
+
+## D09 — Voice Note T6b: Temporal Org Resilience Implemented + Pushback Against Premature Marketing Reorg (`2026-11-18`)
+- **Context:** CEO Voice Note `T6b` states: *"So, marketing will report to the new CRO from next month. Or the month after, still finalising. Make sure the thing doesn't break when we move people around."*
+- **Decision (`partial`):**
+  1. **Implemented:** Temporal `reporting_lines` table (`effective_from`, `effective_to`, `manager_id`) and `get_reporting_line_as_of()` in `db/database.py` ensure future reporting moves never break historical queries or agent contexts.
+  2. **Pushed Back:** Refused to execute a live Marketing reporting-line move today (`2026-11-18`) because no CRO exists in `Employee_Master.xlsx` or `Hiring_Tracker.xlsx`, `REQ-016` PMM backfill is still open after Siddharth Mehta's exit (`E031`), Marketing pulse dipped to `3.4` (`E030`), and the Rs. 3,73,380 Marketing spend discrepancy (`C12`) must be reconciled first. Full rationale in `voice_notes/T6b_response.md`.

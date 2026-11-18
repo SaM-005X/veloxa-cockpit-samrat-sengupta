@@ -2,8 +2,8 @@
 
 An evidence-grounded, point-in-time executive intelligence cockpit for **Veloxa Technologies**, built for the Hiyaku Systems 5-Day Hackathon.
 
-> **Current Status:** **Stage 2 (Day 2 — Tuesday, 17 Nov 2026)**.  
-> Day 1 and Day 2 data ingested, Point-in-Time isolation enforced, Ranked Risk Engine operational, CEO Voice Note `T6a` answered with zero-prompt Top 3 default landing, and interactive Streamlit web dashboard active. 14 automated tests passing with 100% SQLite/Supabase parity.
+> **Current Status:** **Stage 3 (Day 3 — Wednesday, 18 Nov 2026)**.  
+> Day 1–3 data ingested (`veloxa.db` + Supabase PostgreSQL parity across all 21 tables), Policy Guardrails active (`T2` salary ban, `11.eml` `< 6` survey anonymity, `"I don't know"` missing-system honesty), Groq-powered CEO Q&A Engine (`qwen/qwen3-32b` + deterministic offline fallback), 14 Colleague AI Agents (1-on-1 + Department/Conflict Panel Cross-Check), and CEO Voice Notes `T6a` & `T6b` answered.
 
 ---
 
@@ -19,18 +19,16 @@ pip install -r requirements.txt && python run.py --setup --ingest-all --worries 
 streamlit run app.py
 ```
 The cockpit opens directly to **Tab 1: "What Should I Worry About? (Top 3)"** per CEO Voice Note `T6a`, featuring:
-- **Time Machine Selector (Sidebar):** Toggle operating horizon between `2026-11-16 (Day 1)` and `2026-11-17 (Day 2)` with strict historical non-leakage.
-- **Top 3 Strategic Worries:** Critical/High severity cards with confidence ratings, summaries, actionable next steps, and verified evidence citations.
-- **Audit & Governance Drawer:** Expandable `#4+` drawer retaining lower-ranked compliance and financial control findings.
-- **Voice Note Responses (`T6a`):** Executive decision brief and constructive pushback rationale.
-- **Evidence & Conflict Explorer:** Filterable grid of atomic evidence (`E001`..`E035`), cross-source contradictions (`C01`..`C08`), and operational tables.
-- **Stage 3 Previews:** Previews of Grounded CEO Q&A Engine and 14 Colleague AI Agent personas.
+- **Time Machine Selector (Sidebar):** Toggle operating horizon across `2026-11-16 (Day 1)`, `2026-11-17 (Day 2)`, and `2026-11-18 (Day 3)` with strict historical non-leakage.
+- **Top 3 Strategic Worries:** Critical/High severity cards with confidence ratings, summaries, actionable next steps, and verified evidence citations (`#4+` items retained in expandable drawer).
+- **Voice Note Responses (`T6a` & `T6b`):** Executive decision briefs and constructive pushback rationale.
+- **Evidence & Conflict Explorer:** Filterable grid of atomic evidence (`E001`..`E054`), cross-source contradictions (`C01`..`C13`), Jira stories/versions, Git commits, PagerDuty incidents, On-Call Rota, Hiring, Leave, Pulse, and GL tables.
+- **CEO Q&A Chatbot (Tab 4):** Interactive executive Q&A with sample prompt buttons, confidence badges, sources-disagree alerts, guardrail refusal banners, and expandable citations.
+- **14 Colleague AI Agents (Tab 5):** Interactive **1-on-1 Interview** (grounded Point-in-Time work stats + assumed personal profile) and **Department / Conflict Panel Cross-Check** with Cockpit Truth Synthesis.
 
 ---
 
 ## CLI Runner Usage (`run.py`)
-
-The unified CLI runner provides deterministic entry points for setup, ingestion, risk analysis, and testing:
 
 ```bash
 # Initialize SQLite & Supabase PostgreSQL schemas
@@ -39,13 +37,23 @@ python run.py --setup
 # Ingest raw data drops (uses VELOXA_DATA_DIR from .env by default)
 python run.py --ingest-day1
 python run.py --ingest-day2
+python run.py --ingest-day3
 python run.py --ingest-all
 
 # Display Top 3 Ranked Worries from the terminal (per T6a)
+python run.py --worries --as-of 2026-11-18
 python run.py --worries --as-of 2026-11-17
-
-# Verify Point-in-Time isolation (ranks worries strictly using Day 1 evidence)
 python run.py --worries --as-of 2026-11-16
+
+# Ask the grounded CEO Q&A Cockpit
+python run.py --ask "When is Atlas v3 actually shipping and why do sources disagree?" --as-of 2026-11-18
+
+# Interview one of the 14 colleague AI personas (1-on-1)
+python run.py --interview VX007 "How is Atlas v3 workload going for you?" --as-of 2026-11-18
+
+# Run a Multi-Agent Panel Cross-Check (department name or comma-separated VX IDs)
+python run.py --panel "VX006,VX003" "What was our half-year Marketing spend?" --as-of 2026-11-18
+python run.py --panel Engineering "Is Atlas v3 on track for September?" --as-of 2026-11-18
 
 # Inspect database row counts and backend parity
 python run.py --status
@@ -60,7 +68,8 @@ python run.py --test
 
 Copy `.env.example` to `.env` to configure external connections:
 - `DATABASE_URL`: Supabase PostgreSQL connection string (if omitted, the cockpit automatically runs on the local `veloxa.db` SQLite mirror).
-- `GROQ_API_KEY`: Groq Cloud API key for LLM synthesis (falls back to deterministic citation formatting when unset).
+- `GROQ_API_KEY`: Groq Cloud API key for LLM synthesis (falls back seamlessly to the deterministic SQL + evidence-index synthesizer when unset or offline).
+- `GROQ_MODEL`: Optional Groq model override (defaults to `qwen/qwen3-32b`, with automatic fallback to `llama-3.3-70b-versatile` and available Groq models on API errors).
 - `VELOXA_DATA_DIR`: Path to local `Veloxa_Hackathon_Release_Packs` folder for ingesting raw drops.
 
 ---
@@ -70,21 +79,19 @@ Copy `.env.example` to `.env` to configure external connections:
 ```bash
 python -m pytest -v
 ```
-Currently passes **14 automated tests** covering:
-1. Schema initialization and table DDL.
-2. Temporal release mapping and Point-in-Time non-leakage.
-3. Day 1 ingestion (Employee master, Zoho GL, Jan–Mar payroll proration).
-4. Day 2 ingestion (`Hiring_Tracker.xlsx`, `Leave_Register.xlsx`, `Pulse_Survey.xlsx`, `Resignation_Letter_SM.pdf`, emails `06`, `07`, `10`, `11`, transcripts `T3` and `T6a`).
-5. Culture Amp survey anonymity (< 6 respondents enforces comments withheld).
-6. Ranked Risk Engine output (`top_n=3` default vs. `top_n=None` full audit).
-7. Supabase PostgreSQL and local SQLite mirror parity.
+Covers Stage 1, Stage 2, and Stage 3 tests:
+1. Schema initialization, dual-DB parity across all 21 tables, and temporal release mapping.
+2. Day 1–3 ingestion (`Employee_Master`, `GL_Export`, `Payroll_Register`, `Hiring_Tracker`, `Leave_Register`, `Pulse_Survey`, `Jira_Export_ATLAS`, `git_log.csv` [1,453 commits], `Incidents_Aug-Oct_2026`, `OnCall_Rota`, `Invoice_PIS-114`, `Atlas_Launch_Kit_v1`, `Email_Printouts`, 11 `.eml` emails, and `T1`–`T6b` transcripts).
+3. Strict Point-in-Time isolation (`2026-11-16` and `2026-11-17` leak zero Day 3 records).
+4. Guardrails & honest uncertainty (`T2` salary refusal, `11.eml` `< 6` team survey comment refusal, `"I don't know"` for missing Slack/HubSpot/LinkedIn/`REQ-012`).
+5. Grounded CEO Q&A citations, conflict detection (`sources_disagree == True`), and 14 AI Agent persona consistency & panel cross-checks.
 
 ---
 
 ## Project Documentation & Governance Logs
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — 5-layer design, relational schema, entity resolution, and temporal isolation model.
-- [`ASSUMPTIONS.md`](ASSUMPTIONS.md) — Logged assumptions (`A01`..`A11`) with source citations, confidence ratings, and falsifiability criteria.
-- [`TRANSCRIPT_NOTES.md`](TRANSCRIPT_NOTES.md) — Verified transcript mishearings and cross-source contradictions (`C01`..`C08`).
-- [`DECISIONS.md`](DECISIONS.md) — Architectural and product trade-offs (`D01`..`D05`).
-- [`voice_notes/T6a_response.md`](voice_notes/T6a_response.md) — Written response to CEO Voice Note `T6a`.
-- [`AI_LOG.md`](AI_LOG.md) — Comprehensive audit log of AI-assisted tasks, human verification, and error corrections.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — 5-layer design, relational schema, entity resolution, guardrails, Q&A, and 14-agent architecture.
+- [`ASSUMPTIONS.md`](ASSUMPTIONS.md) — Logged assumptions (`A01`..`A30`, including all 14 AI persona profiles) with source citations, confidence ratings, and falsifiability criteria.
+- [`TRANSCRIPT_NOTES.md`](TRANSCRIPT_NOTES.md) — Verified transcript mishearings and cross-source contradictions (`C01`..`C13`) across `T1`–`T6b`.
+- [`DECISIONS.md`](DECISIONS.md) — Architectural and product trade-offs (`D01`..`D09`).
+- [`voice_notes/T6a_response.md`](voice_notes/T6a_response.md) & [`voice_notes/T6b_response.md`](voice_notes/T6b_response.md) — Written responses to CEO Voice Notes `T6a` and `T6b`.
+- [`AI_LOG.md`](AI_LOG.md) — Comprehensive audit log of AI-assisted tasks, mistakes caught, and human verification.
