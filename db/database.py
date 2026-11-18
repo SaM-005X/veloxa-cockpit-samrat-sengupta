@@ -132,6 +132,12 @@ class DatabaseManager:
             "hiring_reqs",
             "leave_records",
             "pulse_surveys",
+            "jira_versions",
+            "jira_issues",
+            "git_commits",
+            "incidents",
+            "oncall_rota",
+            "agent_profiles",
             "voice_note_decisions",
         ]
         counts: dict[str, int] = {}
@@ -149,3 +155,18 @@ class DatabaseManager:
                 row = conn.execute(f"SELECT COUNT(*) AS cnt FROM {tbl}").fetchone()
                 counts[tbl] = int(row["cnt"]) if row else 0
         return counts
+
+    def get_reporting_line_as_of(self, employee_id: str, as_of_date: str) -> dict[str, Any] | None:
+        """Resolve an employee's active reporting line as of a given date without mutating history."""
+        rows = self.query(
+            """SELECT employee_id, manager_id, department, effective_from, effective_to, source_ref
+               FROM reporting_lines
+               WHERE employee_id = ?
+                 AND release_date <= ?
+                 AND effective_from <= ?
+                 AND (effective_to IS NULL OR effective_to = '' OR effective_to >= ?)
+               ORDER BY effective_from DESC, id DESC
+               LIMIT 1""",
+            (employee_id, as_of_date, as_of_date, as_of_date),
+        )
+        return rows[0] if rows else None

@@ -70,7 +70,7 @@ def get_ranked_worries(
     )
     released_ev_ids = {r["evidence_id"] for r in ev_rows}
 
-    # Temporal branch: Day 1 (2026-11-16) vs Day 2+ (2026-11-17 onwards)
+    # Temporal branch: Day 1 (<= 2026-11-16), Day 2 (2026-11-17), Day 3+ (>= 2026-11-18)
     if as_of_date <= "2026-11-16":
         candidates = [
             {
@@ -124,8 +124,8 @@ def get_ranked_worries(
                 "evidence_ids": ["E012", "E013", "E014", "E015", "E021"],
             },
         ]
-    else:
-        # Day 2 (2026-11-17 onwards) incorporating Day 2 HR drop & transcripts
+    elif as_of_date == "2026-11-17":
+        # Day 2 (2026-11-17) incorporating Day 2 HR drop & transcripts (strictly no Day 3 leakage)
         candidates = [
             {
                 "risk_id": "RISK-DAY2-01",
@@ -212,6 +212,98 @@ def get_ranked_worries(
                     "Maintain tight hiring freeze on non-critical administrative roles while safeguarding core product delivery."
                 ),
                 "evidence_ids": ["E004", "E005"],
+            },
+        ]
+    else:
+        # Day 3+ (2026-11-18 onwards) incorporating Jira, Git, PagerDuty, On-Call, Launch Kit, PIS-114, T4 & T5
+        candidates = [
+            {
+                "risk_id": "RISK-DAY3-01",
+                "title": "Priya Nair Single-Point-of-Failure & Acute Burnout Crisis on Atlas v3",
+                "severity": "Critical",
+                "confidence": "High",
+                "summary": (
+                    "Staff Engineer Priya Nair (VX007) owns 35 of 62 Jira stories (56.5%, 131/233 story points) "
+                    "including 100% of ATLAS-2 (Real-time re-routing) and authored 588 of 1,453 git commits (40.5%) "
+                    "including all 103 late-night (22:00-05:59 IST) and 40 weekend commits since June 2026. "
+                    "She emailed Vikram at 23:47 IST on 01-Sep asking to discuss Atlas ownership (09.eml) and took "
+                    "5 afternoon half-day leaves in September while Engineering pulse collapsed to 3.1—yet Vikram "
+                    "claimed in T5 that 'she likes it'."
+                ),
+                "recommended_action": (
+                    "Immediate CEO/VP Eng intervention: redistribute ATLAS-2 re-routing ownership, unfreeze at least "
+                    "one backend requisition (REQ-014/015), and conduct a direct retention 1:1 with Priya."
+                ),
+                "evidence_ids": ["E038", "E040", "E048", "E026", "E029", "E051"],
+            },
+            {
+                "risk_id": "RISK-DAY3-02",
+                "title": "Atlas v3 Three-Month Schedule Slip (2026-12-15) & Executive Visibility Gap",
+                "severity": "Critical",
+                "confidence": "High",
+                "summary": (
+                    "While Vikram Menon verbally told the CEO in T5 that Atlas v3 is 'on track, maybe a couple of "
+                    "weeks of buffer needed' and 'still September-ish', Jira_Export_ATLAS.xlsx (Versions tab) proves "
+                    "Vikram himself pushed Atlas GA from 2026-09-15 to 2026-12-15 on 2026-09-02. Only 35/62 stories "
+                    "(118/233 points = 50.6%) are Done, Sneha paused all 4 ATLAS-5 perf tickets (08.eml), and "
+                    "Marketing's July Atlas_Launch_Kit_v1.pdf (05.eml) remains unpublished."
+                ),
+                "recommended_action": (
+                    "Reset board and customer GA expectations to 2026-12-15 realistically, require weekly Jira "
+                    "burndown reviews, and align Marketing (REQ-016 backfill) on a verified launch calendar."
+                ),
+                "evidence_ids": ["E036", "E037", "E045", "E047", "E051"],
+            },
+            {
+                "risk_id": "RISK-DAY3-03",
+                "title": "Production Fragility (routing-api SEV1s), SRE Strain & Entity Conflation",
+                "severity": "High",
+                "confidence": "High",
+                "summary": (
+                    "All 3 August SEV1 outages (INC-201, INC-203, INC-205) hit routing-api and fell on FTE SRE "
+                    "Sneha Kulkarni (VX012), who ran 6 consecutive solo Primary on-call weeks (Jul 6-Aug 10) before "
+                    "pausing ATLAS-5 perf tickets (08.eml) and onboarding contractor S. Patil / Snehal (EXT001, "
+                    "Patil Infra Services: Rs. 70,800 Aug pro-rata + Rs. 1,41,600 Sep retainer). Vikram conflated "
+                    "Sneha and Snehal in T5 and misassigned August SEV1 postmortems to Snehal."
+                ),
+                "recommended_action": (
+                    "Assign routing-api SEV1 postmortems to Sneha Kulkarni (VX012), review contractor dependency on "
+                    "EXT001 (Rs. 1.42L/mo incl. GST), and prioritize ATLAS-5 reliability hardening before GA."
+                ),
+                "evidence_ids": ["E042", "E043", "E044", "E047", "E052"],
+            },
+            {
+                "risk_id": "RISK-DAY3-04",
+                "title": "Unreconciled Marketing Spend (Rs. 3.73L Gap), Cold Summit Leads & Reorg Risk",
+                "severity": "Medium",
+                "confidence": "High",
+                "summary": (
+                    "Nikhil Bose claims Rs. 18L half-year Marketing spend and 'best quarter ever' summit pipeline in T4, "
+                    "but Zoho Books GL books Rs. 14,26,620 (MKT-PS Rs. 4,23,620 + MKT-EVT Rs. 10,03,000), leaving "
+                    "Rs. 3,73,380 unexplained while Manoj reports summit leads are 'cold' and Siddharth Mehta (VX013) "
+                    "exited Oct 31. Moving Marketing under an unconfirmed CRO (T6b) before reconciliation risks control loss."
+                ),
+                "recommended_action": (
+                    "Complete Aisha Khan's campaign-sheet reconciliation against Zoho GL, close REQ-016 PMM backfill, "
+                    "and defer live CRO reporting transfer until CRO hire date and lead SLAs are finalized."
+                ),
+                "evidence_ids": ["E018", "E031", "E049", "E050", "E054"],
+            },
+            {
+                "risk_id": "RISK-DAY3-05",
+                "title": "Finance & HR Control Backlog (Feb Payroll Error, Trapped Cohere Advance, Rohan T3)",
+                "severity": "Medium",
+                "confidence": "High",
+                "summary": (
+                    "Open control items from Day 1-2 remain unresolved: Rahul Verma's (VX018) Feb 2026 payroll "
+                    "overpayment (28/28 vs 26/28 days), Rs. 1,77,000 idle advance to Cohere Recruiting Partners "
+                    "(JV-0688) on frozen REQ-014/015, and Rohan Banerjee's inflated verbal HR claims in T3."
+                ),
+                "recommended_action": (
+                    "Book the February payroll adjustment, renegotiate or reallocate the Cohere advance, and require "
+                    "Keka Hire export verification for all leadership hiring updates."
+                ),
+                "evidence_ids": ["E013", "E017", "E022", "E023"],
             },
         ]
 
