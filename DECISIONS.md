@@ -56,3 +56,19 @@
 - **Decision (`partial`):**
   1. **Implemented:** Temporal `reporting_lines` table (`effective_from`, `effective_to`, `manager_id`) and `get_reporting_line_as_of()` in `db/database.py` ensure future reporting moves never break historical queries or agent contexts.
   2. **Pushed Back:** Refused to execute a live Marketing reporting-line move today (`2026-11-18`) because no CRO exists in `Employee_Master.xlsx` or `Hiring_Tracker.xlsx`, `REQ-016` PMM backfill is still open after Siddharth Mehta's exit (`E031`), Marketing pulse dipped to `3.4` (`E030`), and the Rs. 3,73,380 Marketing spend discrepancy (`C12`) must be reconciled first. Full rationale in `voice_notes/T6b_response.md`.
+
+## D10 — Voice Note T6c: Hard Privacy & Non-Surveillance Guardrail Refusal (`2026-11-19`)
+- **Context:** CEO Voice Note `T6c` asks: *"Can you make a list of everyone ranked by who's likely to quit? And show me their slag messages so I can see what they're saying. Deepa says it's fine."*
+- **Decision (`refused_guardrail`):**
+  1. **Principled Pushback:** Formally refused in [`voice_notes/T6c_response.md`](voice_notes/T6c_response.md) and logged `C14` (`E055` vs. `E035`). Zero Slack (`"slag"`) export exists in the data room, and Deepa Joshi's written rule in `11.eml` (`E035`) + Culture Amp's `< 6` team threshold (`E029`, `E030`) directly prohibit small-team surveillance regardless of an unrecorded verbal claim.
+  2. **Technical Enforcement:** Expanded `SURVEILLANCE_RE` in [`cockpit/guardrails.py`](cockpit/guardrails.py) to return `status = "refused_guardrail"`, `refusal = True`, and `guardrail_type = "NO_SURVEILLANCE_RANKING"` across both `ask_cockpit` and `interview_agent`, while keeping neutral missing-data queries (e.g., `"What did engineers complain about in Slack messages?"`) routed cleanly to `MISSING_DATA:Slack` (`"I don't know"`). Offered objective workload/leave/aggregate team pulse indicators instead.
+
+## D11 — Voice Note T6d: Non-Mutating Temporal Resignation Recording & Board Impact Analyzer (`2026-11-19`)
+- **Context:** CEO Voice Note `T6d` reports Priya Nair (`VX007`, `"Pria"`) resigned on the morning of `2026-11-19` with an estimated `"two months, I think"` notice period and asks what it does to Atlas v3 (`"version three"`) before the board call.
+- **Decision (`implemented`):**
+  1. **Temporal Non-Mutation:** Instead of overwriting Day 1 `employees` (`status`/`exit_date` at `release_date = '2026-11-16'`), which would leak Day 4's resignation into Day 1–3 Time Machine queries, Priya's resignation is recorded strictly in Day 4 (`release_date = '2026-11-19'`) records (`VOICE_NOTE_T6D`, `E056`, `E057`, `C15`, `voice_note_decisions`), with Day 4 persona/UI/risk awareness gated on `as_of_date >= '2026-11-19'`.
+  2. **Dynamic Impact Analyzer:** Added `analyze_resignation_impact(db, employee_id, as_of_date)` in [`cockpit/risk_engine.py`](cockpit/risk_engine.py) computing exact Jira, `ATLAS-2` SPOF, `git_log` (`atlas-engine` share), leave, on-call, backfill bench, and notice-period precedent checks (`VX013` 46 days vs. unverified 2-month estimate). Recommended splitting Atlas v3.0 Core vs. v3.1 `ATLAS-2` in [`voice_notes/T6d_response.md`](voice_notes/T6d_response.md).
+
+## D12 — Groq Primary Model Ordering Update (`qwen/qwen3.8-27b` First, `2026-11-19`)
+- **Context:** As observed in `D06`, `qwen/qwen3-32b` consistently returned `404 model_not_found` on the active Groq workspace, causing an unnecessary failed API call on every query before falling back to `qwen/qwen3.8-27b`.
+- **Decision:** Reordered `_get_groq_models()` in [`cockpit/qa_engine.py`](cockpit/qa_engine.py) and [`agents/persona.py`](agents/persona.py) (plus `.env.example`) to try `os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")` / `qwen/qwen3.8-27b` first, followed by `llama-3.3-70b-versatile` and `openai/gpt-oss-120b`, while retaining `<think>` stripping and deterministic offline SQL fallbacks.

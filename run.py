@@ -17,12 +17,14 @@ def main() -> int:
     parser.add_argument("--ingest-day1", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run Day 1 ingestion from DATA_DIR")
     parser.add_argument("--ingest-day2", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run Day 2 ingestion from DATA_DIR")
     parser.add_argument("--ingest-day3", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run Day 3 ingestion from DATA_DIR")
-    parser.add_argument("--ingest-all", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run all available ingestion stages (Day 1 + Day 2 + Day 3) from DATA_DIR")
+    parser.add_argument("--ingest-day4", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run Day 4 ingestion from DATA_DIR")
+    parser.add_argument("--ingest-all", metavar="DATA_DIR", nargs="?", const=os.getenv("VELOXA_DATA_DIR", ""), help="Run all available ingestion stages (Day 1 + Day 2 + Day 3 + Day 4) from DATA_DIR")
     parser.add_argument("--worries", action="store_true", help="Display Top Ranked Strategic Worries (per T6a)")
+    parser.add_argument("--impact", metavar="VX_ID", nargs="?", const="VX007", help="Run Point-in-Time resignation & SPOF impact analysis (default: VX007)")
     parser.add_argument("--ask", metavar="QUESTION", help="Ask the grounded CEO Q&A Cockpit a strategic question")
     parser.add_argument("--interview", nargs=2, metavar=("VX_ID", "QUESTION"), help="Conduct a 1-on-1 Point-in-Time interview with one of the 14 colleague personas")
     parser.add_argument("--panel", nargs=2, metavar=("DEPT_OR_IDS", "QUESTION"), help="Run a multi-agent panel cross-check (e.g. Engineering or VX006,VX003)")
-    parser.add_argument("--as-of", default="2026-11-18", help="Point-in-Time as-of date (YYYY-MM-DD, default: 2026-11-18)")
+    parser.add_argument("--as-of", default="2026-11-19", help="Point-in-Time as-of date (YYYY-MM-DD, default: 2026-11-19)")
     parser.add_argument("--status", action="store_true", help="Show database backend & table counts")
     parser.add_argument("--test", action="store_true", help="Run pytest automated suite")
     args = parser.parse_args()
@@ -32,8 +34,10 @@ def main() -> int:
         args.ingest_day1 is not None,
         args.ingest_day2 is not None,
         args.ingest_day3 is not None,
+        args.ingest_day4 is not None,
         args.ingest_all is not None,
         args.worries,
+        args.impact is not None,
         args.ask is not None,
         args.interview is not None,
         args.panel is not None,
@@ -58,14 +62,17 @@ def main() -> int:
             from ingest.day1_loader import ingest_day1
             from ingest.day2_loader import ingest_day2
             from ingest.day3_loader import ingest_day3
+            from ingest.day4_loader import ingest_day4
 
-            print(f"Executing Ingest-All up to Stage 3 from {data_dir}...")
+            print(f"Executing Ingest-All up to Stage 4 from {data_dir}...")
             res1 = ingest_day1(data_dir, db=db)
             print("Day 1 ingestion:", json.dumps(res1, indent=2))
             res2 = ingest_day2(data_dir, db=db)
             print("Day 2 ingestion:", json.dumps(res2, indent=2))
             res3 = ingest_day3(data_dir, db=db)
             print("Day 3 ingestion:", json.dumps(res3, indent=2))
+            res4 = ingest_day4(data_dir, db=db)
+            print("Day 4 ingestion:", json.dumps(res4, indent=2))
 
     else:
         if args.ingest_day1 is not None:
@@ -95,11 +102,26 @@ def main() -> int:
                 res = ingest_day3(args.ingest_day3, db=db)
                 print("Day 3 ingestion:", json.dumps(res, indent=2))
 
+        if args.ingest_day4 is not None:
+            if not args.ingest_day4:
+                print("Skipping Day 4 ingestion: no DATA_DIR passed and VELOXA_DATA_DIR is unset.")
+            else:
+                from ingest.day4_loader import ingest_day4
+
+                res = ingest_day4(args.ingest_day4, db=db)
+                print("Day 4 ingestion:", json.dumps(res, indent=2))
+
     if args.worries:
         from cockpit.risk_engine import format_worries_cli, get_ranked_worries
 
         worries_data = get_ranked_worries(db=db, as_of_date=args.as_of, top_n=3)
         print(format_worries_cli(worries_data))
+
+    if args.impact is not None:
+        from cockpit.risk_engine import analyze_resignation_impact
+
+        impact_res = analyze_resignation_impact(db=db, employee_id=args.impact, as_of_date=args.as_of)
+        print(json.dumps(impact_res, indent=2, ensure_ascii=False))
 
     if args.ask is not None:
         from cockpit.qa_engine import ask_cockpit

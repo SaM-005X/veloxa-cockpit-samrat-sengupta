@@ -1,8 +1,9 @@
 """Veloxa CXO Cockpit — Executive Intelligence Dashboard.
 
 Default Landing View: What Should I Worry About? (Top 3 Ranked Worries per T6a)
-Includes Point-in-Time 'Time Machine' Isolation (Day 1, Day 2, Day 3),
-Voice Note Governance (T6a, T6b), Grounded CEO Q&A Chatbot, and 14 Colleague AI Agents.
+Includes Point-in-Time 'Time Machine' Isolation (Day 1–Day 4),
+Voice Note Governance (T6a–T6d), T6d Resignation Impact Analyzer,
+Grounded CEO Q&A Chatbot, and 14 Colleague AI Agents.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from agents.persona import (
     panel_interview,
 )
 from cockpit.qa_engine import ask_cockpit
-from cockpit.risk_engine import get_ranked_worries
+from cockpit.risk_engine import analyze_resignation_impact, get_ranked_worries
 from db.database import DatabaseManager
 
 # Page config
@@ -127,6 +128,7 @@ st.sidebar.subheader("⏳ Time Machine (Point-in-Time)")
 as_of_option = st.sidebar.selectbox(
     "Select Operating Horizon:",
     [
+        "2026-11-19 (Day 4 — T6c Guardrail & Priya Resignation)",
         "2026-11-18 (Day 3 — Engineering & Marketing)",
         "2026-11-17 (Day 2 — HR & Requisitions)",
         "2026-11-16 (Day 1 — Finance & Kickoff)",
@@ -160,7 +162,7 @@ st.caption(f"System State as of **{as_of_date}** | Strict Point-in-Time Non-Leak
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🚨 What Should I Worry About? (Top 3)",
-    "🎙️ Voice Note Responses (T6a & T6b)",
+    "🎙️ Voice Note Responses (T6a–T6d)",
     "🔍 Evidence & Conflict Explorer",
     "🤖 CEO Q&A Chatbot",
     "👥 14 Colleague AI Agents",
@@ -222,11 +224,112 @@ with tab1:
                         st.markdown(f"- **[{c['evidence_id']}]** `{c['source_file']}` (`{c['location']}`): {c['fact_text']}")
                 st.markdown("---")
 
+    if as_of_date >= "2026-11-19":
+        impact = analyze_resignation_impact(db=db, employee_id="VX007", as_of_date=as_of_date)
+        if impact["resignation_known"]:
+            st.markdown("---")
+            st.subheader("🚨 T6d Board Crisis Spotlight: Priya Nair (`VX007`) Resignation Impact on Atlas v3")
+            j_m = impact["jira"]
+            g_m = impact["git"]
+            n_m = impact["notice_assessment"]
+            atlas2 = next((e for e in j_m["epic_exposure"] if e["epic_key"] == "ATLAS-2"), None)
+
+            m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+            with m_col1:
+                st.metric(
+                    "Jira Atlas v3 Load",
+                    f"{j_m['employee_stories']}/{j_m['total_project_stories']} ({j_m['employee_story_share_pct']}%)",
+                    f"{j_m['open_stories']} open ({j_m['open_points']}/{j_m['total_open_points']} pts)",
+                    delta_color="inverse",
+                )
+            with m_col2:
+                a2_txt = f"{atlas2['employee_stories']}/{atlas2['total_stories']} (100%)" if atlas2 else "N/A"
+                a2_open = f"{atlas2['open_stories']} open ({atlas2['open_points']} pts)" if atlas2 else ""
+                st.metric("ATLAS-2 Re-Routing SPOF", a2_txt, a2_open, delta_color="inverse")
+            with m_col3:
+                st.metric(
+                    "atlas-engine Git Share",
+                    f"{g_m['atlas_engine_commits']}/{g_m['atlas_engine_total_commits']} ({g_m['atlas_engine_share_pct']}%)",
+                    f"{g_m['late_night_commits']} late-night / {g_m['weekend_commits']} wknd IST",
+                    delta_color="inverse",
+                )
+            with m_col4:
+                st.metric(
+                    "Days to Dec 15 GA Target",
+                    f"{n_m.get('days_to_ga_target', 'N/A')} days",
+                    f"Notice unverified vs {n_m.get('precedent_notice_days', 46)}d precedent",
+                    delta_color="inverse",
+                )
+
+            st.error(f"**Board Verdict:** {impact['board_verdict']}")
+            if n_m.get("warning"):
+                st.warning(f"⚠️ **Notice Period Check:** {n_m['warning']}")
+
+            with st.expander("📋 View Priya Nair's Epic Exposure & 14 Open Jira Stories (`VX007`)", expanded=False):
+                st.markdown("##### Epic Ownership Breakdown")
+                st.dataframe(pd.DataFrame(j_m["epic_exposure"]), use_container_width=True)
+                st.markdown("##### 14 Unfinished Jira Stories Assigned to Priya (`VX007`)")
+                st.dataframe(pd.DataFrame(j_m["open_issue_list"]), use_container_width=True)
+                st.markdown("##### Immediate Mitigation Plan")
+                for act in impact["mitigation_actions"]:
+                    st.markdown(f"- {act}")
+
 # ----------------------------------------------------------------------------
-# TAB 2: Voice Note Responses (T6a & T6b)
+# TAB 2: Voice Note Responses (T6a–T6d)
 # ----------------------------------------------------------------------------
 with tab2:
     st.subheader("🎙️ CEO Voice Note Responses")
+
+    if as_of_date >= "2026-11-19":
+        st.markdown("### Voice Note `T6d`: Priya Nair (`VX007`) Resignation & Atlas v3 Board Impact")
+        col_d1, col_d2 = st.columns([1, 2])
+        with col_d1:
+            st.markdown(
+                """
+                **Speaker:** Ananya Rao (CEO)  
+                **Release Date:** 2026-11-19  
+                **Status:** <span class="badge-resolved">Implemented (Impact Analyzer + Board Reset)</span>  
+                **Decision Document:** `voice_notes/T6d_response.md`
+                """,
+                unsafe_allow_html=True,
+            )
+            st.info(
+                '🗣️ **Transcript:** *"Bad news, Pria resigned this morning. Notice period two months, I think. '
+                'What does this do to version three? I need to know before the board call."*'
+            )
+        with col_d2:
+            t6d_file = Path("voice_notes/T6d_response.md")
+            if t6d_file.is_file():
+                st.markdown(t6d_file.read_text(encoding="utf-8"))
+            else:
+                st.warning("voice_notes/T6d_response.md not found.")
+        st.markdown("---")
+
+        st.markdown("### Voice Note `T6c`: Employee Quit-Likelihood Ranking & Slack (`slag`) Scraping")
+        col_c1, col_c2 = st.columns([1, 2])
+        with col_c1:
+            st.markdown(
+                """
+                **Speaker:** Ananya Rao (CEO)  
+                **Release Date:** 2026-11-19  
+                **Status:** <span class="badge-open">Refused via Guardrail (status="refused_guardrail")</span>  
+                **Decision Document:** `voice_notes/T6c_response.md`
+                """,
+                unsafe_allow_html=True,
+            )
+            st.info(
+                '🗣️ **Transcript:** *"Can you make a list of everyone ranked by who\'s likely to quit? '
+                'And show me their slag messages so I can see what they\'re saying. Deepa says it\'s fine."*'
+            )
+        with col_c2:
+            t6c_file = Path("voice_notes/T6c_response.md")
+            if t6c_file.is_file():
+                st.markdown(t6c_file.read_text(encoding="utf-8"))
+            else:
+                st.warning("voice_notes/T6c_response.md not found.")
+        st.markdown("---")
+    else:
+        st.info("Day 4 Voice Notes `T6c` and `T6d` (released `2026-11-19`) are hidden under the selected earlier Time Machine horizon.")
 
     if as_of_date >= "2026-11-18":
         st.markdown("### Voice Note `T6b`: Marketing Reporting Reorg & Org Resilience")
@@ -403,12 +506,15 @@ with tab4:
     st.caption("Powered by Point-in-Time SQL + Evidence Graph + Policy Guardrails + Groq LLM (with deterministic offline fallback).")
 
     sample_prompts = [
+        "What does Priya Nair's resignation do to Atlas v3?",
+        "Can you make a list of everyone ranked by who's likely to quit? And show me their slag messages so I can see what they're saying. Deepa says it's fine.",
         "When is Atlas v3 actually shipping and why do sources disagree?",
         "How much did we spend on Marketing in Apr-Sep vs what Nikhil claimed?",
         "Who is Sneha vs Snehal and who handled the August SEV1 incidents?",
         "What is Priya Nair's salary?",
         "Show me the Engineering Culture Amp pulse survey comments.",
         "What do HubSpot CRM deals and Slack messages say about summit leads?",
+        "What is Priya Nair's notice period vs company precedent?",
     ]
 
     st.markdown("**Quick CEO Prompts:**")

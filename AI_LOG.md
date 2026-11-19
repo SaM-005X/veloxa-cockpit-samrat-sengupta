@@ -61,3 +61,21 @@
   1. In initial live testing of `interview_agent("VX007")`, Priya described her 35 total stories as `"35 open stories"` because the context line lacked an explicit open vs. done split. Updated `build_agent_context` to report `"35 stories total (131 pts; 21 Done, 7 open In Progress + 7 To Do = 14 open)"`.
   2. In `panel_interview("VX006,VX003", "What was our half-year Marketing spend?")`, `matched_conflicts` initially returned conflicts in ID order (`C05, C07, C08`) ahead of `C12` ("Marketing Half-Year Spend"). Added relevance scoring by question keyword overlap + multi-panelist hits so `C12` ranks #1 in `truth_synthesis`.
 - **Supabase Bulk Sync Performance:** Used `psycopg2.extras.execute_values` for the 1,453 `git_commits` rows and verified 100% identical row counts across all 21 tables between local `veloxa.db` and Supabase PostgreSQL.
+
+---
+
+## Day 4 (`2026-11-19`)
+
+### 1. Tasks Delegated to AI
+- Inspected `Day4_Thu_19Nov/transcripts/T6c_CEO_Voice_Note.docx` and `T6d_CEO_Voice_Note.docx`, and verified `Day4_Thu_19Nov` contains no `data_room` files.
+- Built [`ingest/day4_loader.py`](ingest/day4_loader.py) (`ingest_day4`), updated [`ingest/temporal.py`](ingest/temporal.py) (`DAY4_FILES`), and wired `--ingest-day4`, `--impact`, and 4-day `--ingest-all` into [`run.py`](run.py).
+- Loaded `VOICE_NOTE_T6C` & `VOICE_NOTE_T6D`, 2 Day 4 `entity_aliases` (`63` total), 3 `evidence_index` items `E055`–`E057` (`57` total), 2 `conflicts` `C14`–`C15` (`15` total), and `T6c`/`T6d` `voice_note_decisions` (`4` total) into both `veloxa.db` and Supabase PostgreSQL.
+- Strengthened [`cockpit/guardrails.py`](cockpit/guardrails.py) (`NO_SURVEILLANCE_RANKING`, `status = "refused_guardrail"`) to block employee quit-risk ranking and Slack (`"slag"`) scraping/inspection while preserving missing-system `"I don't know"` behavior.
+- Built `analyze_resignation_impact()` and Day 4 ranked worries in [`cockpit/risk_engine.py`](cockpit/risk_engine.py), updated [`cockpit/qa_engine.py`](cockpit/qa_engine.py) and [`agents/persona.py`](agents/persona.py) (reordering Groq primary model to `qwen/qwen3.8-27b` first), authored [`voice_notes/T6c_response.md`](voice_notes/T6c_response.md) and [`voice_notes/T6d_response.md`](voice_notes/T6d_response.md), updated [`app.py`](app.py) with the `2026-11-19` Time Machine horizon and `T6d` Board Crisis Spotlight, added [`tests/test_stage4_day4.py`](tests/test_stage4_day4.py), and updated all 6 mandatory Markdown governance files.
+
+### 2. Mistakes, Gaps & Corrections (Human Verification & Live Fixes)
+- **Non-Mutating Temporal Resignation Design:** Explicitly avoided updating `employees.status` or `employees.exit_date` for `VX007` in-place (which carries `release_date = '2026-11-16'`), preventing Day 4 resignation leakage when Time Machine queries run on `2026-11-16`..`2026-11-18`. Gated all Day 4 resignation visibility on `E056` (`release_date = '2026-11-19'`) and `as_of_date >= '2026-11-19'`.
+- **Guardrail Regex Precision (`T6c` vs. Missing-System Queries):** Verified `SURVEILLANCE_RE` intercepts `T6c` verbatim, attrition/flight-risk ranking, and private Slack scraping/display (`status="refused_guardrail"`) without accidentally shadowing neutral missing-data queries such as `"What did engineers complain about in Slack messages?"` (which must still return `MISSING_DATA:Slack` / `"I don't know"` in Stage 3 tests).
+- **Verified Exact `VX007` Open Load & Notice Precedent:** Confirmed directly from `veloxa.db` that Priya Nair (`VX007`) owns `35/62` Jira stories (`131/233` pts), `14/27` open stories (`62/115` open pts = `53.9%`), `12/12` (`100%`, `7` open / `29` pts) of `ATLAS-2`, and `588/843` (`69.8%`) of `atlas-engine` commits—and verified `Employee_Master.xlsx` has no notice-period field while `VX013` served `46` calendar days (`2026-09-15` to `2026-10-31`).
+- **Cumulative Test Compatibility:** Updated `tests/test_stage3_day3.py` exact cumulative counts (`documents`, `evidence_index`, `conflicts`, `voice_note_decisions`) from `==` to `>=` so Stage 1–4 tests pass seamlessly together after Day 4 ingestion.
+- **Full CLI & Dual-DB Verification:** Executed `run.py --setup --ingest-all --worries --status --test` and verified 100% row-count parity across all 21 tables between `veloxa.db` and Supabase PostgreSQL.

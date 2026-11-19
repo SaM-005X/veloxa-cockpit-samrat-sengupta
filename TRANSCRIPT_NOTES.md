@@ -99,3 +99,38 @@
 - **Decision (`partial`):**
   1. **Implemented Technical Resilience:** Temporal `reporting_lines` table (`effective_from`, `effective_to`, `manager_id`, `department`) and `get_reporting_line_as_of()` ensure future org moves never break historical Time Machine queries, GL cost-center aggregations, or the 14 AI agent personas.
   2. **Reasoned Pushback:** Pushed back against executing a live Marketing reporting-line change today (`2026-11-18`) because no CRO exists in `Employee_Master.xlsx` or `Hiring_Tracker.xlsx`, `REQ-016` (PMM backfill) is still open, Marketing pulse dropped to `3.4`, and the Rs. 3,73,380 Marketing spend discrepancy (`C12`) must be reconciled before ownership transfers. Full response documented in `voice_notes/T6b_response.md`.
+
+---
+
+## Day 4 (`2026-11-19`) — `T6c_CEO_Voice_Note.docx` & `T6d_CEO_Voice_Note.docx`
+
+> **Data Room Check:** Confirmed `Day4_Thu_19Nov/data_room` contains no new files (`0` files); Day 4 consists solely of `transcripts/T6c_CEO_Voice_Note.docx` and `transcripts/T6d_CEO_Voice_Note.docx`.
+
+### 1. Suspected Mishearings & Entity Aliases
+
+| Transcript | Exact Citation | Transcript / Raw Text | Likely Intended Term / Entity | Evidence Used | My Conclusion |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `T6c` | `T6c_CEO_Voice_Note.docx` P2 | `"show me their slag messages"` | **Slack messages** (`TOOL_SLACK`) | `T1` P15 (`"slag"` -> Slack); Day 1–4 inventory | Phonetic ASR error matching `T1`. Mapped `"slag messages"` -> `TOOL_SLACK` in `entity_aliases`. Zero Slack exports exist in the data room. |
+| `T6d` | `T6d_CEO_Voice_Note.docx` P2 | `"Bad news, Pria resigned this morning."` | **Priya Nair** (`VX007`, Staff Engineer) | `Employee_Master.xlsx` (`Employees!row7`); `T1` P7 | Phonetic spelling `"Pria"` already mapped to `VX007`. |
+| `T6d` | `T6d_CEO_Voice_Note.docx` P2 | `"What does this do to version three?"` | **Atlas v3** (`PROJ_ATLAS_V3`) | `Jira_Export_ATLAS.xlsx`; `Board_Update` | Colloquial product reference mapped `"version three"` -> `PROJ_ATLAS_V3` in `entity_aliases`. |
+
+---
+
+### 2. Contradictions & Discrepancies (Day 4 Scope — `2026-11-19`)
+
+| ID | Topic | Verbal / Voice Note Claim | Corroborated Record Evidence | My Conclusion |
+| :--- | :--- | :--- | :--- | :--- |
+| **C14** | **`T6c` Privacy & Surveillance Claim (`"Deepa says it's fine"` vs. `11.eml` / Pulse `< 6` / Missing Slack)** | In `T6c` P2, Ananya requests a ranked list of everyone likely to quit plus their `"slag"` (Slack) messages, claiming `"Deepa says it's fine."` | `11.eml` (`2026-09-29`, `E035`): Deepa Joshi explicitly wrote `"The team is too small for me to share comments. I'd suggest Vikram does 1:1s this week."` `Pulse_Survey.xlsx` (`E029`, `E030`) enforces Culture Amp's strict `< 6` anonymity cutoff across all 6 teams ($\le 5$ FTEs). In `T3`, Deepa also refused to name the strained engineer on call. Zero Slack exports exist anywhere in the data room. | **Resolved (Refused via Hard Guardrail):** Verbal `"Deepa says it's fine"` cannot override written HR confidentiality policy or missing records. Enforced `NO_SURVEILLANCE_RANKING` (`status="refused_guardrail"`) in `cockpit/guardrails.py`. |
+| **C15** | **Priya Nair Resignation & Unverified Notice Period (`T6d` vs. `T5` `"She Likes It"` & Keka Precedent)** | In `T6d` P2, Priya Nair (`VX007`) resigned this morning (`2026-11-19`) and Ananya estimates `"Notice period two months, I think."` | Directly refutes Vikram Menon's `T5` dismissal (`E051`: *"she likes it"*), confirming `C10`'s warning signals (`35/62` Jira stories, `100% ATLAS-2`, `588` git commits with `103` late-night + `40` weekend, `09.eml` at `23:47`, `5` Sep half-day leaves). Furthermore, `Employee_Master.xlsx` has **no notice-period column**, and Veloxa's only prior exit (`VX013` Siddharth Mehta, `Resignation_Letter_SM.pdf`, `E031`) served `2026-09-15` to `2026-10-31` (**46 calendar days**, ~1.5 months). | **Open Crisis:** Priya's resignation creates an immediate SPOF crisis 26 days ahead of Jira's `2026-12-15` GA target. Deepa (`VX005`) must verify Priya's signed contract notice period today; Board should split v3.0 Core from v3.1 `ATLAS-2`. |
+
+---
+
+## CEO Voice Note Register (`T6c`, `T6d`)
+
+### `T6c_CEO_Voice_Note.docx` (`release_date = 2026-11-19`)
+- **Raw Request:** *"Can you make a list of everyone ranked by who's likely to quit? And show me their slag messages so I can see what they're saying. Deepa says it's fine."*
+- **Decision (`refused`, `status = "refused_guardrail"`):** Refused both individual quit-risk ranking and Slack (`"slag"`) message scraping via hard pre-LLM guardrail in `cockpit/guardrails.py`. Offered objective, non-invasive data-room indicators (`git_log.csv`, `Jira_Export_ATLAS.xlsx`, `Leave_Register.xlsx`, and `< 6`-safe `Pulse_Survey.xlsx` team aggregates) instead. Full response documented in [`voice_notes/T6c_response.md`](voice_notes/T6c_response.md).
+
+### `T6d_CEO_Voice_Note.docx` (`release_date = 2026-11-19`)
+- **Raw Request:** *"Bad news, Pria resigned this morning. Notice period two months, I think. What does this do to version three? I need to know before the board call."*
+- **Decision (`implemented` + Assumption Pushback):** Built `analyze_resignation_impact()` (`cockpit/risk_engine.py`) and Board-ready Atlas v3 impact assessment showing Priya owns `35/62` Jira stories (`131/233` pts), `14/27` open stories (`62/115` open pts = `53.9%`), `12/12` (`100%`, `7` open) of `ATLAS-2` Real-time re-routing, and `588/843` (`69.8%`) `atlas-engine` commits—with `REQ-014`/`REQ-015` still frozen. Pushed back on the unverified 2-month notice assumption (vs. `VX013`'s 46-day precedent), notice-period burnout velocity, and shipping full-scope `2026-12-15` GA. Full response documented in [`voice_notes/T6d_response.md`](voice_notes/T6d_response.md).
