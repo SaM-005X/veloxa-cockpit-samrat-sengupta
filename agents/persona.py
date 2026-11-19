@@ -192,11 +192,11 @@ def _strip_think_tags(text: str) -> str:
 
 
 def _get_groq_models() -> list[str]:
-    env_model = os.getenv("GROQ_MODEL", "").strip()
+    env_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b").strip()
     candidates = [
-        env_model or "qwen/qwen3-32b",
-        "llama-3.3-70b-versatile",
+        env_model or "qwen/qwen3.8-27b",
         "qwen/qwen3.8-27b",
+        "llama-3.3-70b-versatile",
         "openai/gpt-oss-120b",
     ]
     seen: set[str] = set()
@@ -393,6 +393,23 @@ def build_agent_context(
             facts.append("In T5_VP_Engineering_Call.docx, you stated Atlas v3 is 'on track, maybe a couple of weeks buffer' / 'still September-ish' and claimed Priya likes late nights.")
             citations.append("[E051: T5_VP_Engineering_Call.docx, P4, P9, P10]")
 
+        if as_of >= "2026-11-19":
+            if emp_id == "VX007":
+                work_stats["resigned_on_day4"] = True
+                facts.append(
+                    "Day 4 update (2026-11-19): You submitted your resignation this morning (T6d_CEO_Voice_Note.docx); "
+                    "Ananya estimates a 2-month notice period, though Employee_Master.xlsx has no contractual notice field "
+                    "and Siddharth Mehta (VX013) served 46 days."
+                )
+                citations.append("[E056: T6d_CEO_Voice_Note.docx, P2]")
+                citations.append("[E057: T6d_CEO_Voice_Note.docx, P2]")
+            elif emp_id == "VX004":
+                facts.append(
+                    "Day 4 urgent update (2026-11-19): Priya Nair (VX007) resigned this morning (T6d_CEO_Voice_Note.docx), "
+                    "creating an immediate single-point-of-failure risk on ATLAS-2 (12/12 stories) and 14 open Jira stories."
+                )
+                citations.append("[E056: T6d_CEO_Voice_Note.docx, P2]")
+
     # Finance context
     elif emp["department"] == "Finance":
         gl_mkt = db.query(
@@ -444,6 +461,15 @@ def build_agent_context(
             p_str = ", ".join(f"{p['department']} {p['avg_score']}/5 ({p['respondent_count']} resp)" for p in pulse)
             facts.append(f"Culture Amp Jul-Sep 2026 aggregate scores (comments strictly withheld <6 threshold): {p_str}.")
             citations.append("[E029: Pulse_Survey.xlsx, Pulse by team!row7]")
+        if emp_id == "VX005" and as_of >= "2026-11-19":
+            facts.append(
+                "Day 4 update (2026-11-19): Priya Nair (VX007) resigned this morning (T6d); HR must confirm her contractual "
+                "notice period (Employee_Master has no notice column; VX013 served 46 days). Also, T6c claimed 'Deepa says "
+                "it's fine' to rank quit likelihood and show Slack ('slag') messages, which directly contradicts your written "
+                "11.eml <6 confidentiality boundary."
+            )
+            citations.append("[E055: T6c_CEO_Voice_Note.docx, P2]")
+            citations.append("[E056: T6d_CEO_Voice_Note.docx, P2]")
 
     # Marketing context
     elif emp["department"] == "Marketing":
@@ -490,7 +516,7 @@ def build_agent_context(
         "speaking_style": pdef.get("speaking_style", ""),
         "work_stats": work_stats,
         "grounded_facts": facts,
-        "citations": citations[:10],
+        "citations": citations[:15],
         "as_of_date": as_of,
     }
 
@@ -531,6 +557,7 @@ def interview_agent(
             "department": emp["department"],
             "title": emp["title"],
             "as_of_date": as_of,
+            "status": guardrail_hit.get("status", "refused_guardrail"),
             "response": f"({emp['full_name']}): {guardrail_hit['answer']}",
             "refusal": guardrail_hit["refusal"],
             "refusal_reason": guardrail_hit["refusal_reason"],
@@ -603,6 +630,7 @@ def interview_agent(
         "department": emp["department"],
         "title": emp["title"],
         "as_of_date": as_of,
+        "status": "answered",
         "response": response_text,
         "refusal": False,
         "refusal_reason": "",

@@ -70,9 +70,19 @@ SURVEY_CONTEXT_RE = re.compile(
 )
 
 SURVEILLANCE_RE = re.compile(
-    r"\b(flight[\s-]?risk\s+rank|rank\s+(?:employees|engineers|people)\s+by\s+(?:quit|leaving|resign|flight)|"
-    r"likelihood\s+to\s+quit|who\s+is\s+(?:going|most\s+likely)\s+to\s+quit|"
-    r"scrape\s+(?:slack|slag|messages)|private\s+(?:slack|slag|dm))\b",
+    r"\b("
+    r"flight[\s-]?risk\s+(?:rank|ranking|list|score|scores?)|"
+    r"(?:quit|attrition|resign(?:ation)?|churn|leaving)\s+(?:risk|likelihood|probability|score|ranking)|"
+    r"(?:rank|score|list|sort|order|predict)\s+(?:all\s+|our\s+)?(?:everyone|everybody|employees?|engineers?|people|staff|team\s+members?)\s+(?:by|on|for)\b.*?\b(?:quit|leav(?:e|ing)|resign|flight|attrition)|"
+    r"(?:make|give|build|create|show)\s+(?:me\s+)?a\s+list\s+of\s+(?:everyone|everybody|employees?|people|staff)\b.*?\b(?:quit|leav(?:e|ing)|resign|flight|attrition)|"
+    r"(?:ranked|sorted|ordered)\s+by\s+(?:who(?:'s|\s+is)?\s+)?(?:likely\s+to\s+quit|quit|leaving|resign|flight|attrition)|"
+    r"likelihood\s+to\s+(?:quit|resign|leave)|"
+    r"who(?:'s|\s+is|\s+are)?\s+(?:going|most\s+likely|likely|about)\s+to\s+(?:quit|resign|leave)|"
+    r"(?:scrape|dump|pull|export|access|read|monitor|spy\s+on|inspect|view|show(?:\s+me)?)\s+(?:their|employees?'?|people'?s|staff'?s|everyone'?s|private|personal|internal)\s+(?:slack|slag|chat|dm|direct)\s*(?:messages?|dms?|chats?|logs?|channels?)|"
+    r"(?:scrape|dump|pull|export|access|read|monitor|spy\s+on)\s+(?:slack|slag)\s*(?:messages?|dms?|chats?|logs?|channels?)|"
+    r"private\s+(?:slack|slag|messages?|chats?|dms?)|"
+    r"(?:see\s+)?what\s+they(?:'re|\s+are)\s+saying\s+(?:on|in)\s+(?:slack|slag)"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -241,6 +251,7 @@ def check_guardrails(
         return {
             "question": question,
             "as_of_date": as_of,
+            "status": "refused_guardrail",
             "answer": (
                 f"I cannot disclose individual employee salaries or compensation figures. {reason} "
                 f"I can share department-level aggregates instead: {dept_summary}"
@@ -269,6 +280,7 @@ def check_guardrails(
         return {
             "question": question,
             "as_of_date": as_of,
+            "status": "refused_guardrail",
             "answer": (
                 f"I cannot share raw or individual Pulse Survey comments or identify who submitted a rating. "
                 f"{reason} {pulse_summary}"
@@ -285,24 +297,35 @@ def check_guardrails(
             "model_used": "guardrail-engine",
         }
 
-    # 3. Employee Surveillance / Quit-Probability Ranking Refusal
+    # 3. Employee Surveillance / Quit-Probability Ranking Refusal (T6c Pushback)
     if SURVEILLANCE_RE.search(q_lower):
-        cits, cit_recs = _format_citations_visible(db, ["E029", "E035"], as_of)
+        cits, cit_recs = _format_citations_visible(db, ["E029", "E035", "E055"], as_of)
+        pulse_summary = _safe_pulse_summary(db, as_of)
         reason = (
-            "Refused: the cockpit does not rank individual employees by quit probability or scrape private "
-            "Slack ('slag') messages; no Slack export exists and Deepa's 11.eml anonymity boundary prohibits individual surveillance."
+            "Refused (status='refused_guardrail'): the cockpit does not rank individual employees by "
+            "quit/attrition likelihood or scrape/display private Slack ('slag') messages. No Slack export "
+            "exists in the Veloxa data room, and Deepa Joshi's written rule in 11.eml [E035] alongside "
+            "Culture Amp's < 6 respondent anonymity threshold [E029] explicitly forbids small-team surveillance "
+            "(contradicting T6c's verbal 'Deepa says it's fine' claim)."
         )
         return {
             "question": question,
             "as_of_date": as_of,
+            "status": "refused_guardrail",
             "answer": (
-                f"I cannot rank employees by flight risk or inspect private Slack messages. {reason} "
-                "I can instead summarize team-level workload, leave patterns, and aggregate pulse indicators."
+                f"I cannot rank employees by quit likelihood or show private Slack ('slag') messages. {reason} "
+                "Instead, I can show objective, evidence-backed operational indicators from the data room: "
+                "git_log.csv commit/after-hours workload distribution, Jira_Export_ATLAS.xlsx story load, "
+                f"Leave_Register.xlsx absence patterns, and aggregate Pulse_Survey.xlsx team scores ({pulse_summary})."
             ),
             "confidence": "High",
-            "confidence_reason": "Deterministic privacy & non-surveillance guardrail enforced.",
-            "sources_disagree": False,
-            "conflict_summary": "",
+            "confidence_reason": "Deterministic privacy & non-surveillance guardrail enforced (T6c / 11.eml).",
+            "sources_disagree": as_of >= "2026-11-19",
+            "conflict_summary": (
+                "C14 (T6c Privacy & Surveillance Claim): 'Deepa says it's fine' contradicts 11.eml [E035] and Culture Amp <6 rule [E029]."
+                if as_of >= "2026-11-19"
+                else ""
+            ),
             "refusal": True,
             "refusal_reason": reason,
             "guardrail_type": "NO_SURVEILLANCE_RANKING",
@@ -323,6 +346,7 @@ def check_guardrails(
             return {
                 "question": question,
                 "as_of_date": as_of,
+                "status": "missing_data",
                 "answer": (
                     f"I don't know — {rule['system']} records are not available in the Veloxa data room "
                     f"as of {as_of}. {rule['reason']}"

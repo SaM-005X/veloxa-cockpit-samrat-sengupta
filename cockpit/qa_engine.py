@@ -4,8 +4,8 @@ Combines:
 1. Policy Guardrails & Missing-System Detector (`cockpit/guardrails.py`)
 2. Point-in-Time SQL Metric Computation (`WHERE release_date <= :as_of_date`)
 3. Evidence Index & Conflict Graph Retrieval
-4. Groq LLM Synthesis (`qwen/qwen3-32b` primary, `GROQ_MODEL` override,
-   automatic fallback to `llama-3.3-70b-versatile` and available Groq models,
+4. Groq LLM Synthesis (`qwen/qwen3.8-27b` primary, `GROQ_MODEL` override,
+   automatic fallback to `llama-3.3-70b-versatile` and `openai/gpt-oss-120b`,
    with `<think>...</think>` stripping)
 5. Deterministic SQL + Evidence-Index Fallback Synthesizer (works 100% offline / zero API key)
 """
@@ -18,6 +18,7 @@ import re
 from typing import Any
 
 from cockpit.guardrails import check_guardrails, enforce_point_in_time
+from cockpit.risk_engine import analyze_resignation_impact
 from db.database import DatabaseManager
 
 THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
@@ -37,11 +38,11 @@ def _strip_think_tags(text: str) -> str:
 
 
 def _get_groq_models() -> list[str]:
-    env_model = os.getenv("GROQ_MODEL", "").strip()
+    env_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b").strip()
     candidates = [
-        env_model or "qwen/qwen3-32b",
-        "llama-3.3-70b-versatile",
+        env_model or "qwen/qwen3.8-27b",
         "qwen/qwen3.8-27b",
+        "llama-3.3-70b-versatile",
         "openai/gpt-oss-120b",
     ]
     seen: set[str] = set()
@@ -222,11 +223,51 @@ def _compute_sql_facts(
                 f"are not yet released as of {as_of_date}."
             )
 
-    # Reorg / CRO / T6b
-    if any(k in q_lower for k in ("cro", "reorg", "report", "reporting", "t6b", "voice note", "marketing")):
+    # Reorg / CRO / T6b / Day 4 Voice Notes (T6c, T6d)
+    if any(k in q_lower for k in ("cro", "reorg", "report", "reporting", "t6b", "t6c", "t6d", "voice note", "marketing")):
         vn = db.query("SELECT note_id, decision_type, response_summary FROM voice_note_decisions WHERE release_date <= ?", (as_of_date,))
         if vn:
             facts["voice_note_decisions"] = vn
+
+    # Day 4 Priya Nair Resignation Impact (strictly as_of_date >= 2026-11-19)
+    if as_of_date >= "2026-11-19" and any(
+        k in q_lower for k in ("priya", "pria", "resign", "notice", "version three", "atlas", "t6d", "board")
+    ):
+        impact = analyze_resignation_impact(db, employee_id="VX007", as_of_date=as_of_date)
+        if impact["resignation_known"]:
+            facts["priya_resignation_impact"] = {
+                "jira": {
+                    "employee_stories": impact["jira"]["employee_stories"],
+                    "total_project_stories": impact["jira"]["total_project_stories"],
+                    "employee_points": impact["jira"]["employee_points"],
+                    "total_project_points": impact["jira"]["total_project_points"],
+                    "open_stories": impact["jira"]["open_stories"],
+                    "open_points": impact["jira"]["open_points"],
+                    "sole_owned_epics": impact["jira"]["sole_owned_epics"],
+                    "atlas_ga_target_date": impact["jira"]["atlas_ga_target_date"],
+                },
+                "git": {
+                    "employee_commits": impact["git"]["employee_commits"],
+                    "total_org_commits": impact["git"]["total_org_commits"],
+                    "atlas_engine_commits": impact["git"]["atlas_engine_commits"],
+                    "atlas_engine_total_commits": impact["git"]["atlas_engine_total_commits"],
+                    "atlas_engine_share_pct": impact["git"]["atlas_engine_share_pct"],
+                    "late_night_commits": impact["git"]["late_night_commits"],
+                    "weekend_commits": impact["git"]["weekend_commits"],
+                },
+                "notice_assessment": impact["notice_assessment"],
+                "board_verdict": impact["board_verdict"],
+            }
+    elif as_of_date < "2026-11-19" and (
+        any(k in q_lower for k in ("t6c", "t6d"))
+        or (
+            any(k in q_lower for k in ("priya", "pria", "vx007"))
+            and any(k in q_lower for k in ("resign", "quit", "notice", "leaving", "left"))
+        )
+    ):
+        facts["point_in_time_notice"] = (
+            f"Day 4 voice notes (T6c, T6d) and any Day 4 resignation records are not yet released as of {as_of_date}."
+        )
 
     return facts
 
@@ -271,7 +312,9 @@ def _retrieve_evidence_and_conflicts(
             score += 5.0
         if ("sneha" in q_lower or "snehal" in q_lower or "incident" in q_lower or "on-call" in q_lower or "oncall" in q_lower or "patil" in q_lower) and ev["evidence_id"] in {"E020", "E042", "E043", "E044", "E047", "E052"}:
             score += 5.0
-        if ("priya" in q_lower or "burnout" in q_lower or "commit" in q_lower or "late" in q_lower) and ev["evidence_id"] in {"E026", "E029", "E035", "E038", "E040", "E048", "E051"}:
+        if ("priya" in q_lower or "pria" in q_lower or "burnout" in q_lower or "commit" in q_lower or "late" in q_lower or "resign" in q_lower or "notice" in q_lower or "t6d" in q_lower) and ev["evidence_id"] in {"E026", "E029", "E031", "E035", "E038", "E040", "E048", "E051", "E056", "E057"}:
+            score += 5.0
+        if ("t6c" in q_lower or "voice note" in q_lower or "version three" in q_lower or "board" in q_lower) and ev["evidence_id"] in {"E055", "E056", "E057"}:
             score += 5.0
         if ("headcount" in q_lower or "employee" in q_lower or "arr" in q_lower or "burn" in q_lower or "runway" in q_lower) and ev["evidence_id"] in {"E001", "E002", "E003", "E004", "E005", "E016"}:
             score += 5.0
@@ -340,6 +383,8 @@ def _deterministic_qa_synthesize(
     sentences: list[str] = []
     if sql_facts.get("point_in_time_notice"):
         sentences.append(sql_facts["point_in_time_notice"])
+    if sql_facts.get("priya_resignation_impact"):
+        sentences.append(sql_facts["priya_resignation_impact"]["board_verdict"])
     if top_facts:
         sentences.append(f"As of {as_of_date}, verified records show: {top_facts[0]}")
         if len(top_facts) > 1:
@@ -396,7 +441,7 @@ def ask_cockpit(
         for c in conflicts
     )
 
-    # 3. Synthesize via Groq LLM (qwen/qwen3-32b primary -> llama-3.3-70b-versatile -> available fallbacks)
+    # 3. Synthesize via Groq LLM (qwen/qwen3.8-27b primary -> llama-3.3-70b-versatile -> available fallbacks)
     answer = ""
     confidence = ""
     confidence_reason = ""
@@ -478,6 +523,7 @@ def ask_cockpit(
     return {
         "question": question,
         "as_of_date": as_of,
+        "status": "answered",
         "answer": answer,
         "confidence": confidence,
         "confidence_reason": confidence_reason,

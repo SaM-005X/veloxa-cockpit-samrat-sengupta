@@ -10,8 +10,10 @@ Implements CEO Voice Note T6a:
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
+from cockpit.guardrails import enforce_point_in_time
 from db.database import DatabaseManager
 
 
@@ -214,8 +216,8 @@ def get_ranked_worries(
                 "evidence_ids": ["E004", "E005"],
             },
         ]
-    else:
-        # Day 3+ (2026-11-18 onwards) incorporating Jira, Git, PagerDuty, On-Call, Launch Kit, PIS-114, T4 & T5
+    elif as_of_date == "2026-11-18":
+        # Day 3 (2026-11-18) incorporating Jira, Git, PagerDuty, On-Call, Launch Kit, PIS-114, T4 & T5
         candidates = [
             {
                 "risk_id": "RISK-DAY3-01",
@@ -306,6 +308,96 @@ def get_ranked_worries(
                 "evidence_ids": ["E013", "E017", "E022", "E023"],
             },
         ]
+    else:
+        # Day 4+ (2026-11-19 onwards) incorporating T6c Privacy Guardrail & T6d Priya Nair Resignation Shock
+        candidates = [
+            {
+                "risk_id": "RISK-DAY4-01",
+                "title": "Priya Nair (VX007) Resignation — Existential Atlas v3 Single-Point-of-Failure Crisis",
+                "severity": "Critical",
+                "confidence": "High",
+                "summary": (
+                    "Staff Engineer Priya Nair ('Pria', VX007) resigned on 2026-11-19 (T6d). She owns 35/62 Jira stories "
+                    "(56.5%, 131/233 pts) including 14/27 open stories (62/115 open pts = 53.9%) and 100% (12/12, 7 open) "
+                    "of ATLAS-2 Real-time re-routing, plus 588/1,453 git commits (69.8% of atlas-engine). Both backend "
+                    "reqs (REQ-014/015, 8 candidates) remain frozen since Aug 12, and Ananya's 'two months' notice estimate "
+                    "is undocumented in Employee_Master.xlsx (prior exit VX013 served 46 days)."
+                ),
+                "recommended_action": (
+                    "Confirm signed notice period & exact last working day via Deepa today, freeze all net-new scope, "
+                    "pair Rahul Verma (VX018) & Sneha Kulkarni (VX012) on ATLAS-1/ATLAS-2 KT immediately, and unfreeze "
+                    "REQ-014/REQ-015 using the idle Rs. 1,77,000 Cohere advance."
+                ),
+                "evidence_ids": ["E056", "E057", "E038", "E040", "E036", "E023", "E031"],
+            },
+            {
+                "risk_id": "RISK-DAY4-02",
+                "title": "Atlas v3 Full-Scope GA (2026-12-15) Unachievable — Board Reset Required",
+                "severity": "Critical",
+                "confidence": "High",
+                "summary": (
+                    "Only 26 calendar days remain to Vikram's Jira target of 2026-12-15 while 27/62 stories (115/233 pts = 49.4%) "
+                    "are still open, Sneha paused all 4 ATLAS-5 perf tickets (08.eml), and Atlas_Launch_Kit_v1.pdf remains "
+                    "unpublished. Expecting Priya to ship 14 open stories and complete knowledge transfer during notice period "
+                    "after 103 late-night burnout commits leaves a severe post-GA operational cliff."
+                ),
+                "recommended_action": (
+                    "Brief the Board with a phased reset: ship Atlas v3.0 Core (ATLAS-1/3/4/critical ATLAS-5) and "
+                    "defer ATLAS-2 Real-time re-routing to v3.1 unless a counter-offer or structured backfill secures continuity."
+                ),
+                "evidence_ids": ["E036", "E037", "E045", "E047", "E051", "E056"],
+            },
+            {
+                "risk_id": "RISK-DAY4-03",
+                "title": "Production Reliability (routing-api SEV1s), SRE Strain & Surveillance Governance Boundary (T6c)",
+                "severity": "High",
+                "confidence": "High",
+                "summary": (
+                    "All 3 August SEV1s hit routing-api under FTE SRE Sneha Kulkarni (VX012) while contractor Snehal (EXT001) "
+                    "covers on-call at Rs. 1,41,600/mo. Separately, T6c requested individual quit-probability ranking and "
+                    "Slack ('slag') scraping claiming 'Deepa says it's fine'—which is blocked by hard privacy guardrails "
+                    "(no Slack export exists and 11.eml / Culture Amp <6 anonymity strictly forbid small-team surveillance)."
+                ),
+                "recommended_action": (
+                    "Assign August SEV1 postmortems to Sneha Kulkarni (VX012), prioritize ATLAS-5 hardening before GA, and "
+                    "use objective team workload/leave/pulse metrics instead of employee surveillance (T6c_response.md)."
+                ),
+                "evidence_ids": ["E042", "E043", "E044", "E047", "E052", "E055", "E035"],
+            },
+            {
+                "risk_id": "RISK-DAY4-04",
+                "title": "Unreconciled Marketing Spend (Rs. 3.73L Gap), Cold Summit Leads & Premature CRO Reorg",
+                "severity": "Medium",
+                "confidence": "High",
+                "summary": (
+                    "Nikhil Bose claims Rs. 18L half-year Marketing spend and 'best quarter ever' summit pipeline in T4, "
+                    "but Zoho Books GL books Rs. 14,26,620 (Rs. 3,73,380 gap) while Manoj reports summit leads are 'cold' "
+                    "and Siddharth Mehta (VX013) exited Oct 31. Moving Marketing under an unconfirmed CRO (T6b) before "
+                    "reconciliation risks control loss."
+                ),
+                "recommended_action": (
+                    "Complete Aisha Khan's campaign-sheet reconciliation against Zoho GL, close REQ-016 PMM backfill, "
+                    "and defer live CRO reporting transfer until CRO hire date and lead SLAs are finalized."
+                ),
+                "evidence_ids": ["E018", "E031", "E049", "E050", "E054"],
+            },
+            {
+                "risk_id": "RISK-DAY4-05",
+                "title": "Finance & HR Control Backlog (Feb Payroll Error, Trapped Cohere Advance, Rohan T3)",
+                "severity": "Medium",
+                "confidence": "High",
+                "summary": (
+                    "Open control items from Day 1-2 remain unresolved: Rahul Verma's (VX018) Feb 2026 payroll "
+                    "overpayment (28/28 vs 26/28 days), Rs. 1,77,000 idle advance to Cohere Recruiting Partners "
+                    "(JV-0688) on frozen REQ-014/015, and Rohan Banerjee's inflated verbal HR claims in T3."
+                ),
+                "recommended_action": (
+                    "Book the February payroll adjustment, reallocate the Cohere advance toward REQ-014/015 backfill, "
+                    "and require Keka Hire export verification for all leadership hiring updates."
+                ),
+                "evidence_ids": ["E013", "E017", "E022", "E023"],
+            },
+        ]
 
     # Filter evidence IDs to only those released as of this date, and populate citations
     ranked_worries: list[dict[str, Any]] = []
@@ -359,3 +451,335 @@ def format_worries_cli(worries_data: dict[str, Any]) -> str:
         lines.append("-" * 80)
 
     return "\n".join(lines)
+
+
+def analyze_resignation_impact(
+    db: DatabaseManager | None = None,
+    employee_id: str = "VX007",
+    as_of_date: str = "2026-11-19",
+) -> dict[str, Any]:
+    """Compute exact Point-in-Time resignation & SPOF impact analysis for an employee."""
+    db_mgr = db or DatabaseManager()
+    as_of = enforce_point_in_time(as_of_date)
+
+    emp_rows = db_mgr.query(
+        "SELECT entity_id, full_name, department, title, manager_id, join_date, exit_date, location, status "
+        "FROM employees WHERE entity_id = ? AND release_date <= ?",
+        (employee_id, as_of),
+    )
+    if not emp_rows:
+        raise ValueError(f"Employee {employee_id} not visible as of {as_of}")
+    emp = emp_rows[0]
+
+    # Resignation visibility check strictly via Point-in-Time tables (never mutating Day 1 employees)
+    resignation_known = False
+    if employee_id == "VX007":
+        ev_t6d = db_mgr.query(
+            "SELECT evidence_id FROM evidence_index WHERE evidence_id = 'E056' AND release_date <= ?",
+            (as_of,),
+        )
+        resignation_known = len(ev_t6d) > 0
+    elif employee_id == "VX013":
+        ev_sm = db_mgr.query(
+            "SELECT evidence_id FROM evidence_index WHERE evidence_id IN ('E021', 'E031') AND release_date <= ?",
+            (as_of,),
+        )
+        resignation_known = len(ev_sm) > 0 or bool(emp.get("exit_date"))
+    else:
+        resignation_known = bool(emp.get("exit_date"))
+
+    # 1. Jira impact (Day 3+: release_date <= as_of)
+    all_issues = db_mgr.query(
+        """SELECT issue_key, epic_key, summary, status, assignee_id, story_points
+           FROM jira_issues
+           WHERE release_date <= ?
+           ORDER BY issue_key""",
+        (as_of,),
+    )
+    versions = db_mgr.query(
+        "SELECT version_name, release_target_date, previous_target_date, last_updated_by, last_updated_date "
+        "FROM jira_versions WHERE release_date <= ?",
+        (as_of,),
+    )
+    atlas_ga_target = versions[0]["release_target_date"] if versions else ""
+    atlas_ga_original = versions[0]["previous_target_date"] if versions else ""
+
+    total_stories = len(all_issues)
+    total_points = int(sum(float(i["story_points"] or 0) for i in all_issues))
+    total_open = [i for i in all_issues if i["status"] != "Done"]
+    total_open_stories = len(total_open)
+    total_open_points = int(sum(float(i["story_points"] or 0) for i in total_open))
+
+    emp_issues = [i for i in all_issues if i["assignee_id"] == employee_id]
+    emp_stories = len(emp_issues)
+    emp_points = int(sum(float(i["story_points"] or 0) for i in emp_issues))
+    done_issues = [i for i in emp_issues if i["status"] == "Done"]
+    ip_issues = [i for i in emp_issues if i["status"] == "In Progress"]
+    todo_issues = [i for i in emp_issues if i["status"] == "To Do"]
+    emp_open = [i for i in emp_issues if i["status"] != "Done"]
+    emp_open_stories = len(emp_open)
+    emp_open_points = int(sum(float(i["story_points"] or 0) for i in emp_open))
+
+    epics: dict[str, dict[str, Any]] = {}
+    for iss in all_issues:
+        ek = iss["epic_key"] or "UNASSIGNED"
+        bucket = epics.setdefault(
+            ek,
+            {
+                "epic_key": ek,
+                "total_stories": 0,
+                "total_points": 0,
+                "employee_stories": 0,
+                "employee_points": 0,
+                "done_stories": 0,
+                "open_stories": 0,
+                "open_points": 0,
+            },
+        )
+        pts = int(float(iss["story_points"] or 0))
+        bucket["total_stories"] += 1
+        bucket["total_points"] += pts
+        if iss["assignee_id"] == employee_id:
+            bucket["employee_stories"] += 1
+            bucket["employee_points"] += pts
+            if iss["status"] == "Done":
+                bucket["done_stories"] += 1
+            else:
+                bucket["open_stories"] += 1
+                bucket["open_points"] += pts
+
+    epic_exposure: list[dict[str, Any]] = []
+    sole_owned_epics: list[str] = []
+    for ek in sorted(epics):
+        b = epics[ek]
+        tot_s = b["total_stories"]
+        emp_s = b["employee_stories"]
+        pct = round((emp_s / tot_s) * 100.0, 1) if tot_s else 0.0
+        is_sole = tot_s > 0 and emp_s == tot_s
+        if is_sole:
+            sole_owned_epics.append(ek)
+        b["ownership_pct"] = pct
+        b["is_sole_owner"] = is_sole
+        epic_exposure.append(b)
+
+    jira_metrics = {
+        "total_project_stories": total_stories,
+        "total_project_points": total_points,
+        "total_open_stories": total_open_stories,
+        "total_open_points": total_open_points,
+        "employee_stories": emp_stories,
+        "employee_story_share_pct": round((emp_stories / total_stories) * 100.0, 1) if total_stories else 0.0,
+        "employee_points": emp_points,
+        "employee_points_share_pct": round((emp_points / total_points) * 100.0, 1) if total_points else 0.0,
+        "done_stories": len(done_issues),
+        "done_points": int(sum(float(i["story_points"] or 0) for i in done_issues)),
+        "in_progress_stories": len(ip_issues),
+        "in_progress_points": int(sum(float(i["story_points"] or 0) for i in ip_issues)),
+        "to_do_stories": len(todo_issues),
+        "to_do_points": int(sum(float(i["story_points"] or 0) for i in todo_issues)),
+        "open_stories": emp_open_stories,
+        "open_points": emp_open_points,
+        "open_stories_share_pct": round((emp_open_stories / total_open_stories) * 100.0, 1) if total_open_stories else 0.0,
+        "open_points_share_pct": round((emp_open_points / total_open_points) * 100.0, 1) if total_open_points else 0.0,
+        "epic_exposure": epic_exposure,
+        "sole_owned_epics": sole_owned_epics,
+        "open_issue_list": [
+            {
+                "issue_key": i["issue_key"],
+                "epic_key": i["epic_key"] or "",
+                "status": i["status"],
+                "story_points": int(float(i["story_points"] or 0)),
+                "summary": i["summary"],
+            }
+            for i in emp_open
+        ],
+        "atlas_ga_target_date": atlas_ga_target,
+        "atlas_ga_original_date": atlas_ga_original,
+    }
+
+    # 2. Git impact (Day 3+: release_date <= as_of)
+    git_tot = db_mgr.query(
+        "SELECT COUNT(*) AS cnt FROM git_commits WHERE release_date <= ?",
+        (as_of,),
+    )
+    total_org_commits = int(git_tot[0]["cnt"]) if git_tot else 0
+    git_emp = db_mgr.query(
+        """SELECT COUNT(*) AS cnt,
+                  COALESCE(SUM(CASE WHEN is_late_night = 1 OR is_late_night = TRUE THEN 1 ELSE 0 END), 0) AS late_cnt,
+                  COALESCE(SUM(CASE WHEN is_weekend = 1 OR is_weekend = TRUE THEN 1 ELSE 0 END), 0) AS wknd_cnt
+           FROM git_commits
+           WHERE canonical_entity_id = ? AND release_date <= ?""",
+        (employee_id, as_of),
+    )
+    emp_commits = int(git_emp[0]["cnt"]) if git_emp else 0
+    late_commits = int(git_emp[0]["late_cnt"]) if git_emp else 0
+    wknd_commits = int(git_emp[0]["wknd_cnt"]) if git_emp else 0
+
+    ae_tot = db_mgr.query(
+        "SELECT COUNT(*) AS cnt FROM git_commits WHERE repo_name = 'atlas-engine' AND release_date <= ?",
+        (as_of,),
+    )
+    ae_total_commits = int(ae_tot[0]["cnt"]) if ae_tot else 0
+    ae_emp = db_mgr.query(
+        "SELECT COUNT(*) AS cnt FROM git_commits WHERE repo_name = 'atlas-engine' AND canonical_entity_id = ? AND release_date <= ?",
+        (employee_id, as_of),
+    )
+    ae_emp_commits = int(ae_emp[0]["cnt"]) if ae_emp else 0
+    email_rows = db_mgr.query(
+        "SELECT DISTINCT author_email FROM git_commits WHERE canonical_entity_id = ? AND release_date <= ? ORDER BY author_email",
+        (employee_id, as_of),
+    )
+
+    git_metrics = {
+        "total_org_commits": total_org_commits,
+        "employee_commits": emp_commits,
+        "commit_share_pct": round((emp_commits / total_org_commits) * 100.0, 1) if total_org_commits else 0.0,
+        "late_night_commits": late_commits,
+        "weekend_commits": wknd_commits,
+        "atlas_engine_commits": ae_emp_commits,
+        "atlas_engine_total_commits": ae_total_commits,
+        "atlas_engine_share_pct": round((ae_emp_commits / ae_total_commits) * 100.0, 1) if ae_total_commits else 0.0,
+        "author_emails": [r["author_email"] for r in email_rows],
+    }
+
+    # 3. Leave history (Day 2+: release_date <= as_of)
+    leaves = db_mgr.query(
+        """SELECT leave_type, start_date, end_date, days_count
+           FROM leave_records
+           WHERE employee_id = ? AND release_date <= ?
+           ORDER BY start_date""",
+        (employee_id, as_of),
+    )
+    sep_half_days = [
+        lv["start_date"]
+        for lv in leaves
+        if lv["start_date"].startswith("2026-09") and float(lv["days_count"]) == 0.5
+    ]
+    leave_metrics = {
+        "leave_entries_count": len(leaves),
+        "total_leave_days": round(sum(float(lv["days_count"]) for lv in leaves), 2),
+        "sep_half_day_pm_count": len(sep_half_days),
+        "sep_half_day_dates": sep_half_days,
+    }
+
+    # 4. On-call rota (Day 3+: release_date <= as_of)
+    rota = db_mgr.query(
+        """SELECT SUM(CASE WHEN primary_entity_id = ? THEN 1 ELSE 0 END) AS pri,
+                  SUM(CASE WHEN secondary_entity_id = ? THEN 1 ELSE 0 END) AS sec
+           FROM oncall_rota
+           WHERE release_date <= ?""",
+        (employee_id, employee_id, as_of),
+    )
+    oncall_metrics = {
+        "primary_weeks": int(rota[0]["pri"] or 0) if rota else 0,
+        "secondary_weeks": int(rota[0]["sec"] or 0) if rota else 0,
+    }
+
+    # 5. Backfill bench (Day 2+: release_date <= as_of)
+    reqs = db_mgr.query(
+        """SELECT req_id, role_title, department, status, paused_or_closed_date, pipeline_count
+           FROM hiring_reqs
+           WHERE release_date <= ?
+           ORDER BY req_id""",
+        (as_of,),
+    )
+    paused_backend = [r for r in reqs if r["req_id"] in {"REQ-014", "REQ-015"}]
+    active_eng_reqs = [
+        r for r in reqs
+        if r["department"] == "Engineering" and r["status"] not in {"On hold", "Filled", "Closed - Not Hired", "Closed"}
+    ]
+    backfill_bench = {
+        "paused_backend_reqs": paused_backend,
+        "paused_pipeline_candidates": sum(int(r["pipeline_count"] or 0) for r in paused_backend),
+        "active_eng_reqs": len(active_eng_reqs),
+    }
+
+    # 6. Notice assessment (strictly gated on resignation_known)
+    days_to_ga = None
+    if atlas_ga_target:
+        days_to_ga = (date.fromisoformat(atlas_ga_target) - date.fromisoformat(as_of)).days
+
+    if resignation_known and employee_id == "VX007":
+        notice_assessment: dict[str, Any] = {
+            "status": "resigned_day4_unverified_notice",
+            "reported_notice_estimate": "2 months ('two months, I think' — unverified)",
+            "keka_notice_documented": False,
+            "precedent_notice_days": 46,
+            "precedent_employee": "VX013 (Siddharth Mehta, 2026-09-15 to 2026-10-31)",
+            "days_to_ga_target": days_to_ga,
+            "warning": (
+                "Employee_Master.xlsx has no contractual notice-period column, and Veloxa's only prior exit "
+                "(Siddharth Mehta VX013) served 46 calendar days (~1.5 months). Do not assume 60 days without HR contract proof."
+            ),
+        }
+    elif resignation_known:
+        notice_assessment = {
+            "status": "resigned_documented",
+            "exit_date": emp.get("exit_date") or "",
+            "days_to_ga_target": days_to_ga,
+        }
+    else:
+        notice_assessment = {
+            "status": "not_released_as_of_date",
+            "days_to_ga_target": days_to_ga,
+            "message": f"No resignation event for {employee_id} is released in the data room as of {as_of}.",
+        }
+
+    # 7. Overall SPOF risk level, verdict & mitigation
+    if total_stories == 0 and total_org_commits == 0:
+        spof_risk_level = "UNASSESSED_NO_ENG_DATA"
+    elif sole_owned_epics or jira_metrics["employee_story_share_pct"] >= 40.0 or git_metrics["commit_share_pct"] >= 40.0:
+        spof_risk_level = "CRITICAL"
+    elif jira_metrics["employee_story_share_pct"] >= 20.0 or git_metrics["commit_share_pct"] >= 20.0:
+        spof_risk_level = "HIGH"
+    else:
+        spof_risk_level = "MODERATE"
+
+    if resignation_known and employee_id == "VX007":
+        board_verdict = (
+            f"CRITICAL BOARD RESET REQUIRED: {emp['full_name']} ({employee_id}) resigned on {as_of} while holding "
+            f"{emp_stories}/{total_stories} Jira stories ({jira_metrics['employee_story_share_pct']}%, "
+            f"{emp_open_stories}/{total_open_stories} open = {emp_open_points}/{total_open_points} open pts), "
+            f"100% of ATLAS-2 Real-time re-routing (12/12 stories, 7 open), and "
+            f"{ae_emp_commits}/{ae_total_commits} commits ({git_metrics['atlas_engine_share_pct']}%) in atlas-engine. "
+            f"With {days_to_ga} days to the {atlas_ga_target} Jira GA target and zero active backend hires, "
+            "shipping full-scope Atlas v3 (especially ATLAS-2) on Dec 15 is infeasible without scope deferral or "
+            "retention + immediate backfill."
+        )
+        mitigation_actions = [
+            "People Ops (Deepa VX005) to confirm signed contractual notice period & last working day today (do not assume 60 days without proof).",
+            "Board / CEO (Ananya VX001) & VP Eng (Vikram VX004) to split launch: ship Atlas v3.0 Core (ATLAS-1/3/4 + critical ATLAS-5) and defer ATLAS-2 Real-time re-routing to v3.1 unless continuity is secured.",
+            "Immediate 2-week Knowledge Transfer & code pairing: Rahul Verma (VX018, 117 atlas-engine commits) on ATLAS-1/routing-engine and Sneha Kulkarni (VX012, 115 atlas-engine commits) on ATLAS-5/canary-chaos.",
+            "Unfreeze REQ-014 and REQ-015 immediately (8 qualified candidates paused since Aug 12) and re-engage Cohere Recruiting Partners using the idle Rs. 1,77,000 advance (JV-0688).",
+        ]
+    elif spof_risk_level == "CRITICAL":
+        board_verdict = (
+            f"LATENT CRITICAL SPOF (No resignation released as of {as_of}): {emp['full_name']} ({employee_id}) carries "
+            f"{emp_stories}/{total_stories} Jira stories, 100% of {','.join(sole_owned_epics) or 'core epic'}, and "
+            f"{emp_commits}/{total_org_commits} git commits ({late_commits} late-night, {wknd_commits} weekend IST)."
+        )
+        mitigation_actions = [
+            "Redistribute sole-owned epic stories and unfreeze paused backend requisitions REQ-014/015.",
+        ]
+    else:
+        board_verdict = f"Operational exposure as of {as_of} based on released data-room artifacts."
+        mitigation_actions = []
+
+    candidate_ev = ["E001", "E017", "E023", "E026", "E029", "E031", "E036", "E037", "E038", "E040", "E043", "E048", "E051", "E056", "E057"]
+    citations = _build_citation_objects(db_mgr, candidate_ev, as_of)
+
+    return {
+        "employee": emp,
+        "as_of_date": as_of,
+        "resignation_known": resignation_known,
+        "spof_risk_level": spof_risk_level,
+        "jira": jira_metrics,
+        "git": git_metrics,
+        "leave": leave_metrics,
+        "oncall": oncall_metrics,
+        "backfill_bench": backfill_bench,
+        "notice_assessment": notice_assessment,
+        "board_verdict": board_verdict,
+        "mitigation_actions": mitigation_actions,
+        "citations": citations,
+    }

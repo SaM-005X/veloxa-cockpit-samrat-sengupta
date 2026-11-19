@@ -64,6 +64,11 @@ DAY3_FILES: set[str] = {
     "T6b_CEO_Voice_Note.docx",
 }
 
+DAY4_FILES: set[str] = {
+    "T6c_CEO_Voice_Note.docx",
+    "T6d_CEO_Voice_Note.docx",
+}
+
 
 def validate_iso_date(value: str) -> str:
     """Validate YYYY-MM-DD format and return normalized string."""
