@@ -88,6 +88,9 @@ veloxa-cockpit-samrat-sengupta/
 ├── TRANSCRIPT_NOTES.md
 ├── DECISIONS.md
 ├── AI_LOG.md
+├── Dockerfile                  # Production python:3.11-slim image with 21-table pre-hydration & HEALTHCHECK
+├── .dockerignore               # Excludes .git, .venv, .env, veloxa.db, caches, private/handoff docs
+├── docker-compose.yml          # One-command container orchestration on port 8501 (optional .env)
 ├── app.py                      # Streamlit CXO Cockpit UI
 ├── run.py                      # Unified CLI Runner
 ├── requirements.txt
@@ -130,3 +133,16 @@ veloxa-cockpit-samrat-sengupta/
     ├── test_stage4_day4.py     # Day 4 T6c guardrail, T6d impact analyzer & PIT tests
     └── test_stage5_submission.py # Stage 5 guardrails, uncertainty, seed & doc checks
 ```
+
+---
+
+## 4. Containerization & AWS EC2 Cloud Deployment
+
+### Docker Containerization (`Dockerfile`, `.dockerignore`, `docker-compose.yml`)
+- **Base & Runtime:** Built on `python:3.11-slim` with `PYTHONDONTWRITEBYTECODE=1`, `PYTHONUNBUFFERED=1`, `STREAMLIT_BROWSER_GATHER_USAGE_STATS=false`, and `--no-cache-dir` dependency installation.
+- **Instant Pre-Hydrated Startup:** Executes `RUN python run.py --setup --seed` during image build so `/app/veloxa.db` ships with all 21 tables populated from [`data/seed/veloxa_seed.json`](data/seed/veloxa_seed.json) even when external databases or raw packs are absent.
+- **Lightweight Healthcheck & Hygiene:** Uses Python stdlib `urllib.request` in `HEALTHCHECK` against `http://localhost:8501/_stcore/health` (avoiding extra `apt` packages like `curl`), excludes `.git`, `.venv`, `.env`, local `veloxa.db`, caches, private planning/handoff docs, and logs via `.dockerignore`, and supports optional runtime `.env` injection in `docker-compose.yml` (`required: false`).
+
+### Live AWS EC2 Deployment & Platform Rationale
+- **Production Endpoint:** Hosted at **`http://13.204.201.29:8501`** (`/_stcore/health` returning `200 ok`) on an AWS Free Tier EC2 `t3.micro` instance (`i-0433e61a5a6e61302`, Ubuntu 24.04 LTS, 20 GB `gp3` + 2 GiB swapfile) in `ap-south-1` behind Security Group `veloxa-cockpit-sg` (TCP `22`, `8501`) with permanent Elastic IP `13.204.201.29` (`eipalloc-053c5978feb9dbf34`), deployed under an isolated least-privilege AWS CLI profile (`veloxa-ec2` / `veloxa-ec2-deployer`) and runtime-only Groq credentials (`GROQ_API_KEY`, `GROQ_MODEL=qwen/qwen3.8-27b`).
+- **Why EC2 + Docker Instead of AWS App Runner:** Pre-flight read-only checks showed the AWS Free Tier account returned `SubscriptionRequiredException` on `aws apprunner list-services` (and `t2.micro` was not Free Tier eligible in `ap-south-1`). Running the self-contained Docker container via `docker compose up -d --build` on a Free Tier `t3.micro` EC2 host with a permanent Elastic IP provided platform-independent portability, zero subscription blockers, and deterministic health-checked availability.

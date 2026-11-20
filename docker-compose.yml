@@ -1,0 +1,13 @@
+services:
+  veloxa-cockpit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: veloxa-cockpit:latest
+    container_name: veloxa-cockpit
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped

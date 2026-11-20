@@ -1,0 +1,39 @@
+# Git & VCS
+.git
+
+# Virtual environments
+.venv
+venv
+env
+
+# Local secrets & environment files
+.env
+.env.*
+!.env.example
+
+# Local SQLite database (pre-hydrated cleanly inside image from portable seed)
+veloxa.db
+veloxa.db-*
+*.sqlite
+*.sqlite3
+
+# Python caches & test caches
+__pycache__
+**/__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+.pytest_cache
+
+# Private planning docs, handoffs, logs, and raw hackathon packs
+PRIVATE_MASTER_BLUEPRINT.md
+HANDOFF*
+*.log
+raw_data
+Veloxa_Hackathon_Release_Packs
+
+# IDE & OS metadata
+.DS_Store
+Thumbs.db
+.vscode
+.idea

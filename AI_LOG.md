@@ -96,3 +96,18 @@
 - **`ASSUMPTIONS.md` Split Persona Table Formatting Bug:** Auditing `ASSUMPTIONS.md` caught that `A31`–`A33` (Day 4 table) had been inserted between `A21` and `A22`–`A30` on Day 4, splitting the 14 AI persona table (`A17`–`A30`) in half. Repaired table ordering cleanly with zero deleted entries (`A01`–`A33` preserved verbatim) and appended `A34` for Stage 5 portable seed packaging.
 - **`ingestion_runs.source_dir` Local Path Leak in DB Snapshots:** Exporting raw SQLite rows directly would have embedded local `C:\Users\...\Downloads\Veloxa_Hackathon_Release_Packs\...` paths into git. Fixed `export_seed_snapshot()` in `db/seed.py` to normalize `source_dir` to `portable_seed/<release_tag>`, normalize timestamps, and enforce a pre-write `FORBIDDEN_SEED_TOKENS` assertion rejecting any machine path or credential prefix.
 - **External Icon Dependency in `app.py`:** Replaced the external `icons8.com` sidebar image URL in `app.py` with an offline markdown header so the Streamlit Cockpit renders cleanly with zero external internet requests.
+
+---
+
+## Post-Freeze Deployment (`2026-11-20`) — Docker Containerization & AWS EC2 Live Launch
+
+### 1. Tasks Delegated to AI
+- Created [`Dockerfile`](Dockerfile), [`.dockerignore`](.dockerignore), and [`docker-compose.yml`](docker-compose.yml) (`python:3.11-slim`, build-time `python run.py --setup --seed` pre-hydration of all 21 SQLite tables, Python stdlib `/_stcore/health` `HEALTHCHECK`, optional `.env` in Compose), built `veloxa-cockpit:latest`, and verified local container health and hygiene on Docker Desktop.
+- Conducted a read-only AWS CLI audit (`aws sts get-caller-identity`, `aws ecr describe-repositories`, `aws apprunner list-services`), then provisioned AWS EC2 infrastructure exclusively via `--profile veloxa-ec2` (`veloxa-ec2-deployer`, `ap-south-1`): external SSH key pair (`C:\Users\suman\.ssh\veloxa-ec2-key.pem`), Security Group `veloxa-cockpit-sg` (TCP `22`, `8501`), Free Tier Ubuntu 24.04 LTS `t3.micro` (`i-0433e61a5a6e61302`, 20 GB `gp3` + 2 GiB swapfile), Docker Engine + Compose v2 deployment, and permanent Elastic IP `13.204.201.29` (`eipalloc-053c5978feb9dbf34`).
+- Upgraded [`README.md`](README.md) with portfolio badges, live AWS EC2 links, Mermaid architecture, and Docker quick-start, and updated [`ARCHITECTURE.md`](ARCHITECTURE.md) and `AI_LOG.md`.
+
+### 2. Environment Constraints Caught & Engineering Adjustments
+- **App Runner `SubscriptionRequiredException` & Profile Isolation:** Read-only AWS checks revealed the default CLI profile (`weather-gpt-deployer`) lacked ECR access (`AccessDeniedException`) and the Free Tier account returned `SubscriptionRequiredException` for AWS App Runner. Switched to containerized AWS EC2 deployment under a dedicated `--profile veloxa-ec2` IAM user.
+- **Regional Free Tier Selection (`t3.micro` vs. `t2.micro`):** Verified via `aws ec2 describe-instance-types` that `t3.micro` is Free Tier eligible in `ap-south-1` while `t2.micro` is not; launched `t3.micro` and configured a 2 GiB `/swapfile` so on-box Docker image builds never hit OOM on 1 GiB RAM.
+- **Zero-Bloat Healthcheck:** Used Python stdlib `urllib.request` in `HEALTHCHECK` instead of installing `curl` into `python:3.11-slim`.
+- **Windows OpenSSH Key Formatting & Secret Hygiene:** Wrote the EC2 `.pem` key outside the repo as UTF-8 (no BOM, LF) with restricted `icacls` permissions, provisioned only `GROQ_API_KEY` + `GROQ_MODEL=qwen/qwen3.8-27b` to `/home/ubuntu/veloxa-cockpit/.env` (`chmod 600`), and verified `http://13.204.201.29:8501/_stcore/health` (`200 ok`) plus all 21 populated SQLite tables in the live container.
