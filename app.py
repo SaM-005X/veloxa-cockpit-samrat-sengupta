@@ -22,6 +22,7 @@ from agents.persona import (
 from cockpit.qa_engine import ask_cockpit
 from cockpit.risk_engine import analyze_resignation_impact, get_ranked_worries
 from db.database import DatabaseManager
+from db.seed import ensure_populated
 
 # Page config
 st.set_page_config(
@@ -114,14 +115,15 @@ st.markdown(
 
 @st.cache_resource
 def get_db() -> DatabaseManager:
-    return DatabaseManager()
+    db_mgr = DatabaseManager()
+    ensure_populated(db_mgr)
+    return db_mgr
 
 
 db = get_db()
 
 # Sidebar: Time Machine & System Telemetry
-st.sidebar.image("https://img.icons8.com/color/96/speedometer.png", width=64)
-st.sidebar.title("Veloxa Cockpit")
+st.sidebar.markdown("## ⚡ Veloxa Cockpit")
 st.sidebar.caption("Executive Intelligence & Governance")
 
 st.sidebar.subheader("⏳ Time Machine (Point-in-Time)")

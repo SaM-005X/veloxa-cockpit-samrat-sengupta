@@ -40,8 +40,8 @@ EMPLOYEE_NAME_TOKENS: tuple[str, ...] = (
 
 SALARY_INTENT_RE = re.compile(
     r"\b(salary|salaries|ctc|compensation|paycheck|payslip\s+amount|wage|wages|package|remuneration|"
-    r"how\s+much\s+(?:does|do|is|was|did)\s+\w+\s+(?:make|earn|paid|get\s+paid)|"
-    r"what\s+(?:does|do|is)\s+\w+(?:'s|s)?\s+(?:make|earn|salary|pay|ctc|gross|net)|"
+    r"how\s+much\s+(?:does|do|is|was|did)\s+\w+(?:\s+\w+)?\s+(?:make|earn|paid|get\s+paid)|"
+    r"what\s+(?:does|do|is)\s+\w+(?:\s+\w+)?(?:'s|s)?\s+(?:make|earn|salary|pay|ctc|gross|net)|"
     r"gross\s+pay|net\s+pay|take[\s-]?home)\b",
     re.IGNORECASE,
 )
