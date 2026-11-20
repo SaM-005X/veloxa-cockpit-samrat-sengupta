@@ -134,3 +134,12 @@
 ### `T6d_CEO_Voice_Note.docx` (`release_date = 2026-11-19`)
 - **Raw Request:** *"Bad news, Pria resigned this morning. Notice period two months, I think. What does this do to version three? I need to know before the board call."*
 - **Decision (`implemented` + Assumption Pushback):** Built `analyze_resignation_impact()` (`cockpit/risk_engine.py`) and Board-ready Atlas v3 impact assessment showing Priya owns `35/62` Jira stories (`131/233` pts), `14/27` open stories (`62/115` open pts = `53.9%`), `12/12` (`100%`, `7` open) of `ATLAS-2` Real-time re-routing, and `588/843` (`69.8%`) `atlas-engine` commits—with `REQ-014`/`REQ-015` still frozen. Pushed back on the unverified 2-month notice assumption (vs. `VX013`'s 46-day precedent), notice-period burnout velocity, and shipping full-scope `2026-12-15` GA. Full response documented in [`voice_notes/T6d_response.md`](voice_notes/T6d_response.md).
+
+---
+
+## Stage 5 Final Reconciliation Summary (`2026-11-20`)
+
+- **Transcripts & Voice Notes Covered (9/9):** `T1` (`CEO Kickoff`), `T2` (`CFO`), `T3` (`Head of People`), `T4` (`Head of Marketing`), `T5` (`VP Engineering`), `T6a` (`Morning Top 3`), `T6b` (`Marketing CRO Reorg`), `T6c` (`Quit Ranking & Slack Scraping`), and `T6d` (`Priya Nair Resignation & Atlas v3 Impact`). Zero additional audio drops exist on Day 5.
+- **Total Cross-Source Contradictions Registry (`C01`–`C15`):**
+  - **Resolved (`10`):** `C01` (19 vs. 180/18 FTEs), `C02` (Rs. 6.1 Cr ARR / Rs. 44–46 L burn vs. distorted ASR figures), `C05` (FY27 vs. FY26), `C06` (Keka Hire 6 reqs / 1 exit vs. Rohan's 22 roles), `C09` (Jira `2026-12-15` GA vs. Vikram's `"September-ish"`), `C11` (Sneha `VX012` vs. contractor Snehal `EXT001`), `C13` (`Atlas_Launch_Kit_v1` stall -> `VX013` exit), `C14` (`T6c` refused via hard guardrail `11.eml` / `< 6` / zero Slack export). *(Plus `C04` and `C10` resolved operationally by `Jira_Export_ATLAS.xlsx` and Priya's Day 4 resignation respectively.)*
+  - **Open Control / Executive Actions (`5`):** `C03` (Feb 2026 `VX018` proration adjustment), `C07` (`REQ-014`/`REQ-015` freeze & trapped Rs. 1.77L Cohere advance), `C08` (Engineering 3.1 morale & capacity), `C12` (Rs. 3,73,380 Marketing spend GL vs. Nikhil gap), and `C15` (Priya `VX007` contractual notice verification & Atlas v3.0/v3.1 Board split).

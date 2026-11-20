@@ -1,6 +1,6 @@
 # Veloxa CXO Cockpit — System Architecture
 
-> **Stage:** Day 4 (`2026-11-19`) — `T6c` Guardrail Enforcement, `T6d` Resignation Impact Analyzer & Full 4-Day Time Machine  
+> **Stage:** Stage 5 — Final Submission & Code Freeze (`2026-11-20`)  
 > **Repository:** `veloxa-cockpit-samrat-sengupta`
 
 ---
@@ -50,9 +50,10 @@ flowchart TD
 - `evidence_index`: 57 atomic, immutable claims (`E001`..`E057`) with exact file/sheet/row coordinates, reliability ratings, and conflict group IDs.
 - `conflicts`: 15 explicit link records (`C01`..`C15`) connecting contradictory claims across transcripts, voice notes, board updates, emails, and operational exports.
 
-### Layer 3: Dual Storage (`db/database.py`)
+### Layer 3: Dual Storage & Portable Offline Seed (`db/database.py`, `db/seed.py`)
 - Single DDL source of truth in [`db/schema.sql`](db/schema.sql).
-- `DatabaseManager` initializes and mirrors all 21 tables into local `veloxa.db` (SQLite) while maintaining real-time parity with Supabase PostgreSQL (`DATABASE_URL`), using fast batch `execute_values` for 1,453 `git_commits`.
+- `DatabaseManager` initializes and mirrors all 21 tables into local `veloxa.db` (SQLite) while maintaining real-time parity with Supabase PostgreSQL (`DATABASE_URL`, with RLS enabled across all 21 public tables per `D04`), using fast batch `execute_values` for 1,453 `git_commits`.
+- [`db/seed.py`](db/seed.py) & [`data/seed/veloxa_seed.json`](data/seed/veloxa_seed.json) provide a path-sanitized, secret-free normalized snapshot of all 21 tables. When evaluators run `run.py --setup --ingest-all ...`, `pytest`, or `streamlit run app.py` on an offline fresh clone without raw archives or `.env`, `ensure_populated()` / `load_seed_snapshot()` automatically hydrates `veloxa.db` deterministically.
 - Strict schema isolation between `payroll_summary` (safe department aggregates) and `payroll_restricted` (internal proration audit only).
 
 ### Layer 4: Point-in-Time, Guardrails, CEO Q&A & Risk/Impact Engine (`cockpit/`)
@@ -103,7 +104,11 @@ veloxa-cockpit-samrat-sengupta/
 ├── db/
 │   ├── __init__.py
 │   ├── schema.sql              # Unified PostgreSQL + SQLite DDL
-│   └── database.py             # Dual-backend connection manager + temporal reporting lines
+│   ├── database.py             # Dual-backend connection manager + temporal reporting lines
+│   └── seed.py                 # Path-sanitized portable seed exporter & offline hydrator
+├── data/
+│   └── seed/
+│       └── veloxa_seed.json    # Portable Day 1-4 normalized DB snapshot for fresh clones
 ├── ingest/
 │   ├── __init__.py
 │   ├── temporal.py             # Temporal tagging & release calendar
@@ -118,8 +123,10 @@ veloxa-cockpit-samrat-sengupta/
 │   └── T6d_response.md         # Written board impact response to CEO voice note T6d
 └── tests/
     ├── __init__.py
+    ├── conftest.py             # Session autouse fixture hydrating offline clones cleanly
     ├── test_stage1_foundation.py
     ├── test_stage2_day2.py
     ├── test_stage3_day3.py     # Day 3 ingestion, guardrails, Q&A, and 14-agent tests
-    └── test_stage4_day4.py     # Day 4 T6c guardrail, T6d impact analyzer & PIT tests
+    ├── test_stage4_day4.py     # Day 4 T6c guardrail, T6d impact analyzer & PIT tests
+    └── test_stage5_submission.py # Stage 5 guardrails, uncertainty, seed & doc checks
 ```

@@ -72,3 +72,11 @@
 ## D12 — Groq Primary Model Ordering Update (`qwen/qwen3.8-27b` First, `2026-11-19`)
 - **Context:** As observed in `D06`, `qwen/qwen3-32b` consistently returned `404 model_not_found` on the active Groq workspace, causing an unnecessary failed API call on every query before falling back to `qwen/qwen3.8-27b`.
 - **Decision:** Reordered `_get_groq_models()` in [`cockpit/qa_engine.py`](cockpit/qa_engine.py) and [`agents/persona.py`](agents/persona.py) (plus `.env.example`) to try `os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")` / `qwen/qwen3.8-27b` first, followed by `llama-3.3-70b-versatile` and `openai/gpt-oss-120b`, while retaining `<think>` stripping and deterministic offline SQL fallbacks.
+
+## D13 — Portable Path-Sanitized JSON Seed (`data/seed/veloxa_seed.json`) for Offline Fresh-Clone Evaluation (`2026-11-20`)
+- **Context:** Evaluators run the submitted one-command setup and test suite from a **fresh clone** on an isolated machine without local raw hackathon archives (`Veloxa_Hackathon_Release_Packs`), `.env`, `GROQ_API_KEY`, or `DATABASE_URL`. At the same time, raw binary archives, secrets, and `veloxa.db` must remain gitignored.
+- **Options Considered:**
+  1. Commit binary `veloxa.db` directly (opaque binary diffs; stores local machine paths in `ingestion_runs.source_dir`).
+  2. Require evaluators to mount external folders (fails fresh-clone evaluation out of the box).
+  3. **Chosen:** Add [`db/seed.py`](db/seed.py) + tracked UTF-8 JSON snapshot [`data/seed/veloxa_seed.json`](data/seed/veloxa_seed.json) (~700 KB) covering all 21 tables in FK-safe order, sanitizing `ingestion_runs.source_dir` (`portable_seed/<release_tag>`) and asserting zero forbidden local path or secret strings. Wire automatic hydration into `run.py --ingest-all` (when raw packs are absent), `app.py`, and `tests/conftest.py`, while preserving empty-schema behavior in `DatabaseManager.init_schema()` for isolated `tmp_path` unit tests.
+- **Trade-off / Reversibility:** Completely reversible (`--ingest-all <DATA_DIR>` still parses real raw drops whenever mounted), human-auditable in git, and guarantees 100% deterministic offline reproducibility.

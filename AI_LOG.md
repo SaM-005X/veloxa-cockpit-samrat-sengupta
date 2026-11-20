@@ -79,3 +79,20 @@
 - **Verified Exact `VX007` Open Load & Notice Precedent:** Confirmed directly from `veloxa.db` that Priya Nair (`VX007`) owns `35/62` Jira stories (`131/233` pts), `14/27` open stories (`62/115` open pts = `53.9%`), `12/12` (`100%`, `7` open / `29` pts) of `ATLAS-2`, and `588/843` (`69.8%`) of `atlas-engine` commits—and verified `Employee_Master.xlsx` has no notice-period field while `VX013` served `46` calendar days (`2026-09-15` to `2026-10-31`).
 - **Cumulative Test Compatibility:** Updated `tests/test_stage3_day3.py` exact cumulative counts (`documents`, `evidence_index`, `conflicts`, `voice_note_decisions`) from `==` to `>=` so Stage 1–4 tests pass seamlessly together after Day 4 ingestion.
 - **Full CLI & Dual-DB Verification:** Executed `run.py --setup --ingest-all --worries --status --test` and verified 100% row-count parity across all 21 tables between `veloxa.db` and Supabase PostgreSQL.
+
+---
+
+## Day 5 / Stage 5 (`2026-11-20`) — Final Submission, Portable Seed & Code Freeze
+
+### 1. Tasks Delegated to AI
+- Built [`db/seed.py`](db/seed.py) (`export_seed_snapshot()`, `load_seed_snapshot()`, `ensure_populated()`) and generated the path-sanitized portable seed snapshot [`data/seed/veloxa_seed.json`](data/seed/veloxa_seed.json) across all 21 relational tables.
+- Updated [`run.py`](run.py) (`--seed`, `--export-seed`, `--ui`, automatic portable-seed fallback on `--ingest-all` when raw release packs are unmounted), [`app.py`](app.py) (`ensure_populated` + offline-safe sidebar header), and added [`tests/conftest.py`](tests/conftest.py) so fresh clones hydrate automatically even under bare `pytest -v`.
+- Expanded test coverage with [`tests/test_stage5_submission.py`](tests/test_stage5_submission.py) (`12` new tests, **38 tests total**, including **12 explicit refusal / uncertainty / Point-in-Time non-leakage tests**).
+- Conducted final audit and Stage 5 freeze updates across all 6 mandatory Markdown files (`README.md`, `ARCHITECTURE.md`, `ASSUMPTIONS.md`, `TRANSCRIPT_NOTES.md`, `DECISIONS.md`, `AI_LOG.md`).
+- Executed a true isolated fresh-clone verification in a clean temp clone with zero `.env`, zero `GROQ_API_KEY`, zero `DATABASE_URL`, and zero raw archives, alongside full local SQLite + Supabase PostgreSQL parity checks.
+
+### 2. Mistakes, Gaps & Corrections (Stage 5 Human Audit & Fixes)
+- **Two-Word Full Name Salary Guardrail Gap:** Auditing `cockpit/guardrails.py` revealed `SALARY_INTENT_RE` matched single-word names (`"What does Priya make?"`) via `\w+`, but failed on two-word full names such as `"How much does Rahul Verma earn?"` or `"What does Priya Nair make?"`. Updated the regex to `\w+(?:\s+\w+)?` and added explicit Stage 5 regression assertions in `test_refusal_individual_salary_t2_variants`.
+- **`ASSUMPTIONS.md` Split Persona Table Formatting Bug:** Auditing `ASSUMPTIONS.md` caught that `A31`–`A33` (Day 4 table) had been inserted between `A21` and `A22`–`A30` on Day 4, splitting the 14 AI persona table (`A17`–`A30`) in half. Repaired table ordering cleanly with zero deleted entries (`A01`–`A33` preserved verbatim) and appended `A34` for Stage 5 portable seed packaging.
+- **`ingestion_runs.source_dir` Local Path Leak in DB Snapshots:** Exporting raw SQLite rows directly would have embedded local `C:\Users\...\Downloads\Veloxa_Hackathon_Release_Packs\...` paths into git. Fixed `export_seed_snapshot()` in `db/seed.py` to normalize `source_dir` to `portable_seed/<release_tag>`, normalize timestamps, and enforce a pre-write `FORBIDDEN_SEED_TOKENS` assertion rejecting any machine path or credential prefix.
+- **External Icon Dependency in `app.py`:** Replaced the external `icons8.com` sidebar image URL in `app.py` with an offline markdown header so the Streamlit Cockpit renders cleanly with zero external internet requests.
